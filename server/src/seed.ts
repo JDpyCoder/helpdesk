@@ -1,8 +1,7 @@
 import { auth } from "./auth.ts";
 import { prisma } from "./db.ts";
+import { Role } from "./generated/prisma/enums.ts";
 
-// Creates the initial admin. Public sign-up is disabled, so this goes through
-// Better Auth's internal adapter (same approach as its admin plugin).
 const email = process.env.SEED_ADMIN_EMAIL?.toLowerCase();
 const password = process.env.SEED_ADMIN_PASSWORD;
 const name = process.env.SEED_ADMIN_NAME ?? "Admin";
@@ -13,17 +12,21 @@ if (!email || !password) {
 
 const ctx = await auth.$context;
 
-if (await ctx.internalAdapter.findUserByEmail(email)) {
+const existing = await ctx.internalAdapter.findUserByEmail(email);
+if (existing) {
   console.log(`User ${email} already exists — nothing to do`);
 } else {
-  const user = await ctx.internalAdapter.createUser({ email, name, emailVerified: true }, { method: "admin" });
+  const user = await ctx.internalAdapter.createUser(
+    { email, name, emailVerified: true, role: Role.ADMIN },
+    { method: "admin" }
+  );
   await ctx.internalAdapter.linkAccount({
     providerId: "credential",
     accountId: user.id,
     userId: user.id,
     password: await ctx.password.hash(password),
   });
-  console.log(`Created user ${email}`);
+  console.log(`Created admin user ${email}`);
 }
 
 await prisma.$disconnect();
