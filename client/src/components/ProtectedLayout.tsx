@@ -18,7 +18,7 @@ function ProtectedLayout() {
 
   return (
     <div className="min-h-screen bg-muted">
-      <NavBar userName={session.user.name} />
+      <NavBar userName={session.user.name} isAdmin={session.user.role === 'ADMIN'} />
       <main className="mx-auto max-w-6xl p-4">
         <Outlet />
       </main>

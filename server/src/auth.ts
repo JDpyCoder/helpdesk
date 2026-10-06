@@ -16,5 +16,16 @@ export const auth = betterAuth({
     // Admins create agents; the first admin comes from `bun run db:seed`
     disableSignUp: true,
   },
+  user: {
+    additionalFields: {
+      // Mirrors the Prisma `Role` enum; server-owned, so clients can't set it
+      role: {
+        type: ["ADMIN", "AGENT"],
+        required: false,
+        defaultValue: "AGENT",
+        input: false,
+      },
+    },
+  },
   trustedOrigins: [clientOrigin],
 });
