@@ -20,10 +20,10 @@ if (!secret || secret.length < 32) {
 export const auth = betterAuth({
   secret,
   database: prismaAdapter(prisma, { provider: "postgresql" }),
-  // On in every environment (Better Auth only enables it in production by default);
+  // Production only, so dev and e2e runs can sign in repeatedly from one IP;
   // sign-in gets a tighter limit to slow password guessing
   rateLimit: {
-    enabled: true,
+    enabled: process.env.NODE_ENV === "production",
     customRules: {
       "/sign-in/email": { window: 60, max: 5 },
     },

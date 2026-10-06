@@ -29,7 +29,9 @@ Run from the repo root:
 - `bun run dev` — start client and server together
 - `bun run dev:client` / `bun run dev:server` — start one app
 - `bun run build` — production build of the client
-- `bun run typecheck` — typecheck server, then typecheck + build client
+- `bun run typecheck` — typecheck the e2e files (root `tsconfig.json`), then the server, then typecheck + build the client
+
+- `bun run test:e2e` — Playwright end-to-end tests (`test:e2e:ui` for UI mode, `test:e2e:report` for the last HTML report)
 
 Run from `server/`:
 
@@ -53,7 +55,18 @@ Better Auth with email + password and database-backed sessions (PostgreSQL via P
 - **Admin-only pages (client)** — nest routes under `AdminRoute` (`client/src/components/AdminRoute.tsx`) inside `ProtectedLayout`; non-admins are redirected to `/`. This only hides UI — admin API routes still need a server-side role check.
 - **Client** — `client/src/lib/auth-client.ts` exports `authClient` (`better-auth/react`) with no `baseURL`: requests are same-origin and Vite proxies `/api` to the server, so the session cookie works without CORS. Use `authClient.useSession()`, `authClient.signIn.email()`, and `authClient.signOut()`.
 - **Route protection (client)** — wrap protected routes in `ProtectedLayout` (`client/src/components/ProtectedLayout.tsx`, see `App.tsx`). It shows a loading state while the session is pending, redirects to `/login` with no session, and renders the `NavBar` (user name + sign out, plus a "Users" link when `isAdmin`). `LoginPage` redirects to `/` if already signed in.
+- **Rate limiting** — on only when `NODE_ENV=production` (`rateLimit.enabled` in `auth.ts`), with a tighter `/sign-in/email` rule (5 per 60s). Dev and e2e run without it. Production deploys **must** set `NODE_ENV=production`, or sign-in brute-force protection is silently off.
 - **Env vars** (`server/.env`) — `BETTER_AUTH_SECRET` (generate with `openssl rand -base64 32`), `BETTER_AUTH_URL` (server URL), `CLIENT_ORIGIN` (Vite dev origin; the server throws on startup without it), `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, optional `SEED_ADMIN_NAME`.
+
+## End-to-end tests
+
+Playwright (Chromium) with `playwright.config.ts` at the root and specs in `e2e/`.
+
+- **Isolated stack** — Playwright starts its own API on :3001 (`server/`, `NODE_ENV=test`) and client on :5174 (Vite with `API_PROXY_TARGET` pointing at :3001), never reusing an existing server, so dev servers on :3000/:5173 can keep running.
+- **Separate database** — every value comes from `server/.env.test` (git-ignored; template in `server/.env.test.example`). The database name must end in `_test`; the config and `server/src/reset-test-db.ts` both refuse otherwise.
+- **Per-run reset** — `e2e/global-setup.ts` runs `prisma migrate deploy` (creates the database on first run), truncates every table, then runs the seed (admin from `SEED_ADMIN_*` in `.env.test`). Web servers start *before* global setup, which is why the API's readiness URL is `/api/auth/ok`, not the DB-dependent `/api/health`.
+- **One worker** — tests share the database, so they run serially. Tests that need their own data should create it themselves.
+- **Rate limiting** — off outside production (see Authentication), so repeated sign-ins from one IP don't get 429s.
 
 ## Conventions
 

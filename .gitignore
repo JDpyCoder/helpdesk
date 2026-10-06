@@ -4,5 +4,13 @@ dist
 .env
 .env.*
 !.env.example
+!.env.test.example
 .DS_Store
 server/src/generated
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/e2e/.auth/

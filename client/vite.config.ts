@@ -16,7 +16,12 @@ export default defineConfig({
     proxy: {
       // Forward API calls to the Express server during development. xfwd adds
       // X-Forwarded-For so the server rate-limits per browser IP, not per proxy.
-      '/api': { target: 'http://localhost:3000', changeOrigin: true, xfwd: true },
+      // API_PROXY_TARGET lets Playwright point a second dev server at the test API.
+      '/api': {
+        target: process.env.API_PROXY_TARGET ?? 'http://localhost:3000',
+        changeOrigin: true,
+        xfwd: true,
+      },
     },
   },
 })
