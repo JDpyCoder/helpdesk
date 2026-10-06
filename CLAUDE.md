@@ -60,13 +60,12 @@ Better Auth with email + password and database-backed sessions (PostgreSQL via P
 
 ## End-to-end tests
 
-Playwright (Chromium) with `playwright.config.ts` at the root and specs in `e2e/`.
+Playwright (Chromium) with `playwright.config.ts` at the root and specs in `e2e/`. The `e2e-tester` agent (`.claude/agents/e2e-tester.md`) owns this suite, and its instructions document how the test stack works.
 
-- **Isolated stack** — Playwright starts its own API on :3001 (`server/`, `NODE_ENV=test`) and client on :5174 (Vite with `API_PROXY_TARGET` pointing at :3001), never reusing an existing server, so dev servers on :3000/:5173 can keep running.
-- **Separate database** — every value comes from `server/.env.test` (git-ignored; template in `server/.env.test.example`). The database name must end in `_test`; the config and `server/src/reset-test-db.ts` both refuse otherwise.
-- **Per-run reset** — `e2e/global-setup.ts` runs `prisma migrate deploy` (creates the database on first run), truncates every table, then runs the seed (admin from `SEED_ADMIN_*` in `.env.test`). Web servers start *before* global setup, which is why the API's readiness URL is `/api/auth/ok`, not the DB-dependent `/api/health`.
-- **One worker** — tests share the database, so they run serially. Tests that need their own data should create it themselves.
-- **Rate limiting** — off outside production (see Authentication), so repeated sign-ins from one IP don't get 429s.
+- **Delegate E2E work** — write, update, run, and debug Playwright tests through the `e2e-tester` agent (Agent tool, `subagent_type: "e2e-tester"`), not in the main session. This covers new specs and helpers in `e2e/` as well as diagnosing failing tests.
+- **When to use it** — after finishing a user-facing feature or flow (e.g. a new page, form, admin action, or ticket workflow), when a change touches auth, routing, or role checks, or when the user asks for E2E coverage or a test run.
+- **What to pass it** — the agent starts with no knowledge of this conversation. Tell it what changed or what to cover: the feature and its routes, the files involved, the expected behaviour for each role, and any edge cases. Ask it to run the affected specs and report results.
+- **After it returns** — relay its summary to the user: tests added or changed, pass/fail counts, and any app bugs it found. Don't claim tests pass unless its report shows a passing run.
 
 ## Conventions
 
