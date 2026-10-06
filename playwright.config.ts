@@ -24,6 +24,8 @@ const clientUrl = testEnv.CLIENT_ORIGIN
 export default defineConfig({
   testDir: './e2e',
   globalSetup: './e2e/global-setup.ts',
+  // Traces, screenshots and other per-test artifacts
+  outputDir: './e2e/test-results',
   // Tests share one database, so run them one at a time
   fullyParallel: false,
   workers: 1,

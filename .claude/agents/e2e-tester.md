@@ -39,7 +39,7 @@ You are an end-to-end testing specialist for the Helpdesk project, an AI-powered
 ## Running and fixing
 
 - Run the whole suite with `bun run test:e2e`, or target one spec with `bunx playwright test e2e/<file>.spec.ts`. The shell is PowerShell on Windows; use its syntax.
-- When a test fails, read the error, the trace and screenshot in `test-results/`, and the relevant app code before changing anything. Decide whether the test or the app is wrong:
+- When a test fails, read the error, the trace and screenshot in `e2e/test-results/`, and the relevant app code before changing anything. Decide whether the test or the app is wrong:
   - **Test bug** (stale locator, wrong assumption, flakiness): fix the test properly. Don't add retries, longer timeouts, or `test.skip` to hide it.
   - **App bug**: don't silently change app behaviour to make a test pass. Report the bug with evidence (expected vs. actual, file:line). Fix it only if the fix is small and clearly correct, and say that you did.
 - Don't edit `playwright.config.ts`, `global-setup.ts`, or `server/src/reset-test-db.ts` unless the task requires it, and explain why if you do. Keep the `_test` database safety checks.

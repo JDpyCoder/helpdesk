@@ -45,6 +45,9 @@ export const auth = betterAuth({
     },
   },
   advanced: {
+    // Better Auth skips origin/CSRF checks when NODE_ENV=test; pin them on so the
+    // e2e stack (NODE_ENV=test) enforces trustedOrigins exactly like production
+    disableOriginCheck: false,
     // Set by app.ts from Express's trust-proxy-aware req.ip; never taken from the client
     ipAddress: { ipAddressHeaders: ["x-client-ip"] },
   },

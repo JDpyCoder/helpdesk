@@ -9,7 +9,7 @@ dist
 server/src/generated
 
 # Playwright
-/test-results/
+/e2e/test-results/
 /playwright-report/
 /blob-report/
 /playwright/.cache/
