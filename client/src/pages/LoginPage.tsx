@@ -1,8 +1,14 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
+import { AlertCircle, Loader2 } from 'lucide-react'
+import { Controller, useForm } from 'react-hook-form'
 import { Navigate, useNavigate } from 'react-router'
 import { z } from 'zod'
-import { authClient } from '../lib/auth-client.ts'
+import { Alert, AlertDescription } from '@/components/ui/alert.tsx'
+import { Button } from '@/components/ui/button.tsx'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx'
+import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.tsx'
+import { Input } from '@/components/ui/input.tsx'
+import { authClient } from '@/lib/auth-client.ts'
 
 const loginSchema = z.object({
   email: z.email('Enter a valid email address'),
@@ -11,85 +17,88 @@ const loginSchema = z.object({
 
 type LoginValues = z.infer<typeof loginSchema>
 
-const inputClass =
-  'mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 aria-invalid:border-red-500'
-
 function LoginPage() {
   const navigate = useNavigate()
   const { data: session, isPending } = authClient.useSession()
-  const {
-    register,
-    handleSubmit,
-    setError,
-    formState: { errors, isSubmitting },
-  } = useForm<LoginValues>({
+  const form = useForm<LoginValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   })
+  const { errors, isSubmitting } = form.formState
 
   if (!isPending && session) return <Navigate to="/" replace />
 
   async function onSubmit(values: LoginValues) {
     const { error } = await authClient.signIn.email(values)
     if (error) {
-      setError('root.serverError', { message: error.message ?? 'Invalid email or password' })
+      form.setError('root.serverError', { message: error.message ?? 'Invalid email or password' })
       return
     }
     navigate('/', { replace: true })
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow">
-        <h1 className="text-2xl font-semibold text-gray-900">Helpdesk</h1>
-        <p className="mt-1 text-sm text-gray-500">Sign in to your account</p>
+    <main className="flex min-h-screen items-center justify-center bg-muted p-4">
+      <Card className="w-full max-w-sm">
+        <CardHeader>
+          <CardTitle className="text-2xl">Helpdesk</CardTitle>
+          <CardDescription>Sign in to your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+            <FieldGroup>
+              {errors.root?.serverError && (
+                <Alert variant="destructive">
+                  <AlertCircle />
+                  <AlertDescription>{errors.root.serverError.message}</AlertDescription>
+                </Alert>
+              )}
 
-        <form onSubmit={handleSubmit(onSubmit)} noValidate className="mt-6 space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              autoComplete="email"
-              aria-invalid={!!errors.email}
-              {...register('email')}
-              className={inputClass}
-            />
-            {errors.email && <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>}
-          </div>
+              <Controller
+                name="email"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                    <Input
+                      {...field}
+                      id={field.name}
+                      type="email"
+                      autoComplete="email"
+                      placeholder="you@example.com"
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              aria-invalid={!!errors.password}
-              {...register('password')}
-              className={inputClass}
-            />
-            {errors.password && (
-              <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
-            )}
-          </div>
+              <Controller
+                name="password"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                    <Input
+                      {...field}
+                      id={field.name}
+                      type="password"
+                      autoComplete="current-password"
+                      aria-invalid={fieldState.invalid}
+                    />
+                    {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
+                  </Field>
+                )}
+              />
 
-          {errors.root?.serverError && (
-            <p className="text-sm text-red-600">{errors.root.serverError.message}</p>
-          )}
-
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
-            {isSubmitting ? 'Signing in…' : 'Sign in'}
-          </button>
-        </form>
-      </div>
+              <Button type="submit" disabled={isSubmitting} className="w-full">
+                {isSubmitting && <Loader2 className="animate-spin" />}
+                {isSubmitting ? 'Signing in…' : 'Sign in'}
+              </Button>
+            </FieldGroup>
+          </form>
+        </CardContent>
+      </Card>
     </main>
   )
 }

@@ -8,7 +8,7 @@ function ProtectedLayout() {
 
   if (isPending) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-sm text-gray-400">
+      <div className="flex min-h-screen items-center justify-center bg-muted text-sm text-muted-foreground">
         Loading…
       </div>
     )
@@ -17,7 +17,7 @@ function ProtectedLayout() {
   if (!session) return <Navigate to="/login" replace />
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-muted">
       <NavBar userName={session.user.name} />
       <main className="mx-auto max-w-6xl p-4">
         <Outlet />
