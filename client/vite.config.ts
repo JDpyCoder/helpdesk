@@ -14,8 +14,9 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      // Forward API calls to the Express server during development
-      '/api': 'http://localhost:3000',
+      // Forward API calls to the Express server during development. xfwd adds
+      // X-Forwarded-For so the server rate-limits per browser IP, not per proxy.
+      '/api': { target: 'http://localhost:3000', changeOrigin: true, xfwd: true },
     },
   },
 })
