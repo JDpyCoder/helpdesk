@@ -10,7 +10,8 @@ test.describe('Home page', () => {
   test('shows that the server is healthy', async ({ page, admin }) => {
     await signIn(page, admin)
 
-    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible()
+    // The card title is a plain div (no heading role), unlike the Users page title
+    await expect(page.getByText('Home', { exact: true })).toBeVisible()
     await expect(page.getByText(/^Server is healthy — last checked at .+\.$/)).toBeVisible()
     await expect(page.getByText('Could not reach the server')).toHaveCount(0)
   })
@@ -23,7 +24,7 @@ test.describe('Home page', () => {
 
     // While retries are pending the page keeps showing the loading state, not the error
     await expect.poll(health.calls).toBeGreaterThanOrEqual(1)
-    await expect(page.getByText('Checking server health…')).toBeVisible()
+    await expect(page.getByRole('status', { name: 'Checking server health' })).toBeVisible()
 
     await expect(page.getByText('Could not reach the server (HTTP 500).')).toBeVisible({
       timeout: RETRIES_EXHAUSTED_TIMEOUT,

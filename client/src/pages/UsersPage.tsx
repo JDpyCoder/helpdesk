@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx'
+import { Skeleton } from '@/components/ui/skeleton.tsx'
 import {
   Table,
   TableBody,
@@ -38,7 +39,16 @@ function UsersPage() {
         {error ? (
           <p className="text-destructive">Could not load users ({errorMessage(error)}).</p>
         ) : !users ? (
-          <p className="text-muted-foreground">Loading users…</p>
+          <div role="status" aria-label="Loading users" className="space-y-3">
+            {Array.from({ length: 4 }, (_, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-5 w-14 rounded-full" />
+                <Skeleton className="h-5 w-20" />
+              </div>
+            ))}
+          </div>
         ) : users.length === 0 ? (
           <p className="text-muted-foreground">No users found.</p>
         ) : (

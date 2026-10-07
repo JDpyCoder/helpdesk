@@ -65,13 +65,13 @@ test.describe('Cached data across sign-out', () => {
 
     // With the cache cleared there is nothing to show until the new request finishes
     await expect.poll(() => requests).toBe(1)
-    await expect(page.getByText('Loading users…')).toBeVisible()
+    await expect(page.getByRole('status', { name: 'Loading users' })).toBeVisible()
     await expect(page.getByRole('table')).toHaveCount(0)
 
     release()
     const table = page.getByRole('table')
     await expect(table.getByRole('row').filter({ hasText: secondAdmin.email })).toBeVisible()
-    await expect(page.getByText('Loading users…')).toHaveCount(0)
+    await expect(page.getByRole('status', { name: 'Loading users' })).toHaveCount(0)
     await expectNoReload(page)
   })
 })

@@ -22,7 +22,7 @@ test.describe('Route protection (signed out)', () => {
 
     await page.goto('/')
 
-    await expect(page.getByText('Loading…')).toBeVisible()
+    await expect(page.getByRole('status', { name: 'Loading', exact: true })).toBeVisible()
     await expect(page.getByRole('navigation')).toHaveCount(0)
     release()
     await expect(page).toHaveURL('/login')

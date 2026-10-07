@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx'
+import { Skeleton } from '@/components/ui/skeleton.tsx'
 import { errorMessage } from '@/lib/query-client.ts'
 
 type Health = { status: string; timestamp: string }
@@ -26,7 +27,7 @@ function HomePage() {
             {new Date(health.timestamp).toLocaleTimeString()}.
           </p>
         ) : (
-          <p className="text-muted-foreground">Checking server health…</p>
+          <Skeleton role="status" aria-label="Checking server health" className="h-5 w-72" />
         )}
       </CardContent>
     </Card>

@@ -40,7 +40,7 @@ test.describe('Users page', () => {
 
     // Retries happen behind the loading state
     await expect.poll(users.calls).toBeGreaterThanOrEqual(1)
-    await expect(page.getByText('Loading users…')).toBeVisible()
+    await expect(page.getByRole('status', { name: 'Loading users' })).toBeVisible()
 
     await expect(page.getByText('Could not load users (HTTP 500).')).toBeVisible({ timeout: 15_000 })
     await expect(page.getByRole('table')).toHaveCount(0)
