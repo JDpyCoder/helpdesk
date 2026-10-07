@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx'
 import {
@@ -9,6 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table.tsx'
+import { errorMessage } from '@/lib/query-client.ts'
 
 type User = {
   id: string
@@ -19,18 +21,10 @@ type User = {
 }
 
 function UsersPage() {
-  const [users, setUsers] = useState<User[] | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/users')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<{ users: User[] }>
-      })
-      .then((body) => setUsers(body.users))
-      .catch((err: Error) => setError(err.message))
-  }, [])
+  const { data: users, error } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => axios.get<{ users: User[] }>('/api/users').then((res) => res.data.users),
+  })
 
   return (
     <Card>
@@ -42,7 +36,7 @@ function UsersPage() {
       </CardHeader>
       <CardContent className="text-sm">
         {error ? (
-          <p className="text-destructive">Could not load users ({error}).</p>
+          <p className="text-destructive">Could not load users ({errorMessage(error)}).</p>
         ) : !users ? (
           <p className="text-muted-foreground">Loading users…</p>
         ) : users.length === 0 ? (

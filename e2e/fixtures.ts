@@ -66,6 +66,12 @@ export function createUser(options: { role?: Role; name?: string; email?: string
 // Signs in through the login form and waits until the app shows the signed-in layout
 export async function signIn(page: Page, user: Credentials) {
   await page.goto('/login')
+  await submitLoginForm(page, user)
+}
+
+// Like signIn, but uses the login form already on screen instead of loading /login, so
+// the SPA (and its in-memory query cache) is not reloaded
+export async function submitLoginForm(page: Page, user: Credentials) {
   await page.getByLabel('Email').fill(user.email)
   await page.getByLabel('Password').fill(user.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
@@ -88,6 +94,17 @@ export async function signOutViaApi(request: APIRequestContext) {
   const res = await request.post('/api/auth/sign-out', { headers: { Origin: CLIENT_ORIGIN } })
   expect(res.status(), await res.text()).toBe(200)
   return res
+}
+
+// Makes every browser request to `path` (e.g. '/api/health') fail with `status`.
+// `calls()` reports how many requests the app made, e.g. to check retries.
+export async function failApiRoute(page: Page, path: string, status: number) {
+  let count = 0
+  await page.route(`**${path}`, async (route) => {
+    count++
+    await route.fulfill({ status, json: { error: `Mocked ${status}` } })
+  })
+  return { calls: () => count }
 }
 
 type Fixtures = {

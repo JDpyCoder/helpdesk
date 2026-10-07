@@ -1,21 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx'
+import { errorMessage } from '@/lib/query-client.ts'
 
 type Health = { status: string; timestamp: string }
 
 function HomePage() {
-  const [health, setHealth] = useState<Health | null>(null)
-  const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    fetch('/api/health')
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        return res.json() as Promise<Health>
-      })
-      .then(setHealth)
-      .catch((err: Error) => setError(err.message))
-  }, [])
+  const { data: health, error } = useQuery({
+    queryKey: ['health'],
+    queryFn: () => axios.get<Health>('/api/health').then((res) => res.data),
+  })
 
   return (
     <Card>
@@ -25,7 +19,7 @@ function HomePage() {
       </CardHeader>
       <CardContent className="text-sm">
         {error ? (
-          <p className="text-destructive">Could not reach the server ({error}).</p>
+          <p className="text-destructive">Could not reach the server ({errorMessage(error)}).</p>
         ) : health ? (
           <p className="text-green-600">
             Server is healthy — last checked at{' '}

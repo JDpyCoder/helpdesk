@@ -10,14 +10,14 @@ AI-powered support ticket management system. Support emails become tickets; Clau
 
 ## Documentation lookups
 
-Always use the Context7 MCP (`resolve-library-id` → `query-docs`) to fetch up-to-date documentation before writing or changing code that uses a library, framework, SDK, or CLI — e.g. Bun, Express, React, Vite, Tailwind CSS, React Router, Prisma, PostgreSQL, the Anthropic SDK, SendGrid/Mailgun. Do this even for well-known libraries; versions in this repo are recent (Express 5, React 19, Vite 8, Tailwind 4) and may differ from training data. Prefer Context7 over web search for library docs.
+Always use the Context7 MCP (`resolve-library-id` → `query-docs`) to fetch up-to-date documentation before writing or changing code that uses a library, framework, SDK, or CLI — e.g. Bun, Express, React, Vite, Tailwind CSS, React Router, TanStack Query, axios, Prisma, PostgreSQL, the Anthropic SDK, SendGrid/Mailgun. Do this even for well-known libraries; versions in this repo are recent (Express 5, React 19, Vite 8, Tailwind 4) and may differ from training data. Prefer Context7 over web search for library docs.
 
 ## Structure
 
 Bun workspace monorepo with a single root `bun.lock`:
 
 - `client/` — React 19 + TypeScript + Vite 8 + Tailwind CSS v4 (`@tailwindcss/vite`) + shadcn/ui. Dev server on :5173 proxies `/api` to the server.
-  - `src/pages/` — route pages; `src/components/` — app components (`NavBar`, `ProtectedLayout`, `AdminRoute`); `src/components/ui/` — shadcn components; `src/lib/` — `auth-client.ts` (Better Auth), `utils.ts` (`cn`).
+  - `src/pages/` — route pages; `src/components/` — app components (`NavBar`, `ProtectedLayout`, `AdminRoute`); `src/components/ui/` — shadcn components; `src/lib/` — `auth-client.ts` (Better Auth), `query-client.ts` (TanStack Query client + `errorMessage`), `utils.ts` (`cn`).
   - `components.json` — shadcn config. `src/index.css` holds the shadcn theme (CSS variables for light/dark) and is the only CSS file.
 - `server/` — Express 5 + TypeScript, run directly by Bun (no build step). `src/app.ts` defines the app; `src/index.ts` starts it on `PORT` (default 3000).
 
@@ -76,6 +76,11 @@ Playwright (Chromium) with `playwright.config.ts` at the root and specs in `e2e/
 - Style the client with Tailwind utility classes; no separate CSS files per component.
 - UI components come from shadcn/ui (Radix base, Nova preset, neutral). Add them from `client/` with `bunx --bun shadcn@latest add <component>`; they land in `src/components/ui/`. Use theme tokens (`bg-background`, `text-muted-foreground`, `text-destructive`, …) instead of raw palette colors. Import from `client/src` with the `@/` alias.
 - `cn` comes from the `cn` npm package (shadcn's drop-in replacement for clsx + tailwind-merge), not a local clsx/twMerge helper.
+- **Data fetching: always use axios + TanStack Query (React Query)** for client calls to `/api`. Never use `fetch`, and never use `useEffect` + `useState` to load server data.
+  - Reads: `useQuery({ queryKey, queryFn: () => axios.get<T>(url).then((res) => res.data) })`. See `UsersPage.tsx`.
+  - Writes (create/edit/delete): `useMutation` with an axios call, then `queryClient.invalidateQueries({ queryKey })` on success so lists refetch.
+  - The shared `queryClient` is in `client/src/lib/query-client.ts`. It registers `AxiosError` as the default error type, retries only network/5xx errors, and exports `errorMessage(error)` for display. `NavBar` clears the cache on sign-out.
+  - Exception: auth calls go through `authClient` (Better Auth), not axios.
 - Build forms with react-hook-form + zod using shadcn's `Field` pattern: `<Controller>` → `<Field data-invalid>` → `FieldLabel` / `Input aria-invalid` / `FieldError`. Show server errors via `form.setError('root.serverError', …)` rendered in a destructive `Alert`. See `LoginPage.tsx`.
 - `src/components/ui/` files are ours and may be customized. `input.tsx` has an autofill reset that hides Chrome's autofill background — re-apply it if the component is regenerated with `shadcn add input --overwrite`.
 - Secrets go in `server/.env` (git-ignored); document new variables in `server/.env.example`.

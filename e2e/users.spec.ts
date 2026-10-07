@@ -1,4 +1,4 @@
-import { expect, signIn, signInViaApi, test } from './fixtures'
+import { expect, failApiRoute, signIn, signInViaApi, test } from './fixtures'
 
 type ApiUser = { id: string; name: string; email: string; role: string; createdAt: string }
 
@@ -19,6 +19,43 @@ test.describe('Users page', () => {
 
     const agentRow = table.getByRole('row').filter({ hasText: agent.email })
     await expect(agentRow.getByRole('cell')).toHaveText([agent.name, agent.email, 'Agent', /\S/])
+  })
+
+  test('shows "No users found." when the API returns an empty list', async ({ page, admin }) => {
+    await signIn(page, admin)
+    await page.route('**/api/users', (route) => route.fulfill({ json: { users: [] } }))
+
+    await page.goto('/users')
+
+    await expect(page.getByText('No users found.')).toBeVisible()
+    await expect(page.getByRole('table')).toHaveCount(0)
+  })
+
+  test('shows an HTTP 500 error after retrying', async ({ page, admin }) => {
+    test.slow() // 5xx is retried 3 times with 1s + 2s + 4s backoff before the error shows
+    await signIn(page, admin)
+    const users = await failApiRoute(page, '/api/users', 500)
+
+    await page.goto('/users')
+
+    // Retries happen behind the loading state
+    await expect.poll(users.calls).toBeGreaterThanOrEqual(1)
+    await expect(page.getByText('Loading users…')).toBeVisible()
+
+    await expect(page.getByText('Could not load users (HTTP 500).')).toBeVisible({ timeout: 15_000 })
+    await expect(page.getByRole('table')).toHaveCount(0)
+    expect(users.calls()).toBe(4)
+  })
+
+  test('shows a 4xx error immediately without retrying', async ({ page, admin }) => {
+    await signIn(page, admin)
+    const users = await failApiRoute(page, '/api/users', 403)
+
+    await page.goto('/users')
+
+    // With retries the error would take ~7s to appear, past the default 5s expect timeout
+    await expect(page.getByText('Could not load users (HTTP 403).')).toBeVisible()
+    expect(users.calls()).toBe(1)
   })
 })
 
