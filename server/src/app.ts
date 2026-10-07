@@ -3,6 +3,7 @@ import helmet from "helmet";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./auth.ts";
 import { prisma } from "./db.ts";
+import { requireAdmin } from "./middleware/requireAdmin.ts";
 import { requireAuth, type AuthLocals } from "./middleware/requireAuth.ts";
 
 export const app = express();
@@ -51,6 +52,15 @@ app.get("/api/me", requireAuth, (_req, res: Response<unknown, AuthLocals>) => {
   // Never echo the session token: it's the bearer credential the httpOnly cookie protects
   const { token: _token, ...session } = res.locals.session;
   res.json({ user: res.locals.user, session });
+});
+
+app.get("/api/users", requireAuth, requireAdmin, async (_req, res) => {
+  // Explicit select: never leak sessions, accounts, or password hashes
+  const users = await prisma.user.findMany({
+    select: { id: true, name: true, email: true, role: true, createdAt: true },
+    orderBy: { createdAt: "asc" },
+  });
+  res.json({ users });
 });
 
 // 404 for unknown API routes
