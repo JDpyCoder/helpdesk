@@ -31,6 +31,7 @@ Run from the repo root:
 - `bun run build` — production build of the client
 - `bun run typecheck` — typecheck the e2e files (root `tsconfig.json`), then the server, then typecheck + build the client
 
+- `bun run test` — client component tests, run once (see "Component tests" below)
 - `bun run test:e2e` — Playwright end-to-end tests (`test:e2e:ui` for UI mode, `test:e2e:report` for the last HTML report)
 
 Run from `server/`:
@@ -57,6 +58,34 @@ Better Auth with email + password and database-backed sessions (PostgreSQL via P
 - **Route protection (client)** — wrap protected routes in `ProtectedLayout` (`client/src/components/ProtectedLayout.tsx`, see `App.tsx`). It shows a loading state while the session is pending, redirects to `/login` with no session, and renders the `NavBar` (user name + sign out, plus a "Users" link when `isAdmin`). `LoginPage` redirects to `/` if already signed in.
 - **Rate limiting** — on only when `NODE_ENV=production` (`rateLimit.enabled` in `auth.ts`), with a tighter `/sign-in/email` rule (5 per 60s). Dev and e2e run without it. Production deploys **must** set `NODE_ENV=production`, or sign-in brute-force protection is silently off.
 - **Env vars** (`server/.env`) — `BETTER_AUTH_SECRET` (generate with `openssl rand -base64 32`), `BETTER_AUTH_URL` (server URL), `CLIENT_ORIGIN` (Vite dev origin; the server throws on startup without it), `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, optional `SEED_ADMIN_NAME`.
+
+## Component tests
+
+Vitest + React Testing Library in jsdom, for the client only. Config is the `test` block in `client/vite.config.ts`; `client/src/test/setup.ts` loads the jest-dom matchers and runs `cleanup` after each test. Reference spec: `client/src/pages/UsersPage.test.tsx`.
+
+**Running**
+- `bun run test` (root) or `bun run test` (from `client/`) — run all once. Run this after changing a component that has tests, and before finishing client work.
+- From `client/`: `bun run test:watch` reruns on save; `bun run test:ui` opens the Vitest UI (open the tokenized URL it prints). Both need an interactive terminal; in a non-interactive shell Vitest runs once and exits.
+- One file or test: `bunx vitest run src/pages/UsersPage.test.tsx` or add `-t "<test name>"`.
+- `bun run typecheck` also typechecks the test files (`tsc -b` includes `src/`).
+
+**What goes where**
+- Component tests: one component's rendering and states in isolation — loading, empty, error, data, conditional UI, form validation. The API is mocked.
+- E2E (Playwright, `e2e/`): real flows across the browser, server and database — auth, role checks, navigation, retries. Don't duplicate E2E coverage in component tests or vice versa.
+
+**Writing a test**
+- Put the spec next to the component as `<Component>.test.tsx`. Only `src/**/*.test.{ts,tsx}` is picked up.
+- Vitest globals are off: import `describe`, `it`, `expect`, `vi`, `afterEach` from `vitest`.
+- Render with `renderWithQuery(<Component />)` from `@/test/render.tsx`. It wraps the component in a fresh `QueryClient` (no shared cache, `retry: false` so error states show immediately) and also returns that `queryClient`.
+- Mock HTTP at the axios boundary: `vi.mock('axios')`, `const mockGet = vi.mocked(axios.get)`, then per test:
+  - data: `mockGet.mockResolvedValue({ data: … })`
+  - loading: `mockGet.mockReturnValue(new Promise(() => {}))` (never settles)
+  - errors: `mockGet.mockRejectedValue(…)` with an `Error` that has `response: { status }` for an HTTP error, or no `response` for a network error. `errorMessage()` only reads those fields.
+  - Add `afterEach(() => { vi.resetAllMocks() })`.
+- Query like a user: `getByRole` with an accessible name first (`heading`, `table`, `row`, `cell`, `button`, `status` for skeletons), then `getByText`. Avoid test IDs and class names. Use `findBy…` to wait for data, and `queryBy…` with `.not.toBeInTheDocument()` to assert absence.
+- Assert user-visible output, including exact copy for messages ("Could not load users (HTTP 403)."). Build locale-dependent expectations (dates) the same way the component does, e.g. `toLocaleDateString()`.
+- Components that use routing or the session: wrap in `<MemoryRouter>` from `react-router`, and mock `@/lib/auth-client.ts` with `vi.mock` so `authClient.useSession()` returns the user you need. If a provider is needed in many specs, add a helper next to `renderWithQuery` in `src/test/` instead of repeating it.
+- jsdom has no layout or CSS. Don't test styling, visibility from CSS, or real navigation here; that belongs in E2E.
 
 ## End-to-end tests
 

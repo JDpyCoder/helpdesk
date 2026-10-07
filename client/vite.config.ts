@@ -1,7 +1,7 @@
 import path from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
@@ -23,5 +23,11 @@ export default defineConfig({
         xfwd: true,
       },
     },
+  },
+  // Component tests (React Testing Library); Playwright E2E specs live in the root e2e/
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.test.{ts,tsx}'],
   },
 })
