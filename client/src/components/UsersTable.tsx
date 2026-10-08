@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
+import DeleteUserDialog from '@/components/DeleteUserDialog.tsx'
 import EditUserDialog from '@/components/EditUserDialog.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Skeleton } from '@/components/ui/skeleton.tsx'
@@ -74,8 +75,11 @@ function UsersTable() {
               </Badge>
             </TableCell>
             <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
-            <TableCell className="text-right">
-              <EditUserDialog user={user} />
+            <TableCell>
+              <div className="flex justify-end gap-1">
+                <EditUserDialog user={user} />
+                <DeleteUserDialog user={user} />
+              </div>
             </TableCell>
           </TableRow>
         ))}

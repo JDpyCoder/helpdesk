@@ -28,7 +28,7 @@ test.describe('Users page', () => {
     await expect(page.getByText('People who can sign in to the helpdesk')).toBeVisible()
 
     const table = page.getByRole('table')
-    // The last header is screen-reader-only text for the edit buttons
+    // The last header is screen-reader-only text for the edit and delete buttons
     await expect(table.getByRole('columnheader')).toHaveText(['Name', 'Email', 'Role', 'Created', 'Actions'])
 
     const adminRow = table.getByRole('row').filter({ hasText: admin.email })

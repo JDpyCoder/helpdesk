@@ -84,6 +84,16 @@ describe('UsersPage', () => {
     expect(within(agentRow).getByRole('button', { name: 'Edit Alan Agent' })).toBeInTheDocument()
   })
 
+  it('has a delete button in each row, disabled for admins', async () => {
+    mockGet.mockResolvedValue({ data: { users } })
+    renderWithQuery(<UsersPage />)
+
+    const table = await screen.findByRole('table')
+    const [, adminRow, agentRow] = within(table).getAllByRole('row')
+    expect(within(adminRow).getByRole('button', { name: 'Delete Ada Admin' })).toBeDisabled()
+    expect(within(agentRow).getByRole('button', { name: 'Delete Alan Agent' })).toBeEnabled()
+  })
+
   it('shows an empty message when there are no users', async () => {
     mockGet.mockResolvedValue({ data: { users: [] } })
     renderWithQuery(<UsersPage />)

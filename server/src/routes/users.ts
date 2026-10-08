@@ -22,7 +22,11 @@ function sendValidationError(res: Response, error: z.ZodError) {
 }
 
 usersRouter.get("/", async (_req, res) => {
-  const users = await prisma.user.findMany({ select: userSelect, orderBy: { createdAt: "asc" } });
+  const users = await prisma.user.findMany({
+    where: { deletedAt: null },
+    select: userSelect,
+    orderBy: { createdAt: "asc" },
+  });
   res.json({ users });
 });
 
@@ -66,11 +70,11 @@ usersRouter.patch("/:id", async (req, res: Response<unknown, AuthLocals>) => {
   const { name, email, password } = parsed.data;
   const { id } = req.params;
 
-  const ctx = await auth.$context;
-  if (!(await ctx.internalAdapter.findUserById(id))) {
+  if (!(await prisma.user.findFirst({ where: { id, deletedAt: null }, select: { id: true } }))) {
     res.status(404).json({ error: "User not found" });
     return;
   }
+  const ctx = await auth.$context;
   const existing = await ctx.internalAdapter.findUserByEmail(email);
   if (existing && existing.user.id !== id) {
     res.status(409).json({ error: "A user with this email already exists" });
@@ -92,4 +96,25 @@ usersRouter.patch("/:id", async (req, res: Response<unknown, AuthLocals>) => {
 
   const user = await prisma.user.findUniqueOrThrow({ where: { id }, select: userSelect });
   res.json({ user });
+});
+
+// Soft delete: the row stays, but the user leaves the list, can't sign in and is signed out now.
+// The email is rewritten to a tombstone so the address can be reused; admins can't be deleted.
+usersRouter.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+  const user = await prisma.user.findFirst({ where: { id, deletedAt: null }, select: { email: true, role: true } });
+  if (!user) {
+    res.status(404).json({ error: "User not found" });
+    return;
+  }
+  if (user.role === Role.ADMIN) {
+    res.status(403).json({ error: "Admins can't be deleted" });
+    return;
+  }
+
+  await prisma.$transaction([
+    prisma.user.update({ where: { id }, data: { deletedAt: new Date(), email: `deleted+${id}+${user.email}` } }),
+    prisma.session.deleteMany({ where: { userId: id } }),
+  ]);
+  res.status(204).end();
 });

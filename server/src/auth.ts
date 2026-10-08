@@ -1,5 +1,6 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
+import { APIError } from "better-auth/api";
 import { prisma } from "./db.ts";
 import { Role } from "./generated/prisma/enums.ts";
 
@@ -33,6 +34,20 @@ export const auth = betterAuth({
     enabled: true,
     // Admins create agents; the first admin comes from `bun run db:seed`
     disableSignUp: true,
+  },
+  databaseHooks: {
+    session: {
+      create: {
+        // Soft-deleted users never get a session. Their email is tombstoned, so sign-in already
+        // fails as an unknown user; this covers any other path that creates a session.
+        before: async (session) => {
+          const user = await prisma.user.findUnique({ where: { id: session.userId }, select: { deletedAt: true } });
+          if (user?.deletedAt) {
+            throw new APIError("UNAUTHORIZED", { message: "Invalid email or password" });
+          }
+        },
+      },
+    },
   },
   user: {
     additionalFields: {
