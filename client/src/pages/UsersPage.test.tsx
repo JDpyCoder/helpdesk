@@ -1,4 +1,4 @@
-import { screen, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import axios from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithQuery } from '@/test/render.tsx'
@@ -93,5 +93,60 @@ describe('UsersPage', () => {
     renderWithQuery(<UsersPage />)
 
     expect(await screen.findByText('Could not load users (Network Error).')).toBeInTheDocument()
+  })
+
+  describe('Create user dialog', () => {
+    async function openDialog() {
+      mockGet.mockResolvedValue({ data: { users } })
+      renderWithQuery(<UsersPage />)
+      fireEvent.click(screen.getByRole('button', { name: 'New user' }))
+      const dialog = screen.getByRole('dialog', { name: 'Create user' })
+      // Radix registers its outside-pointerdown listener on the next tick after opening
+      await act(() => new Promise((resolve) => setTimeout(resolve)))
+      return dialog
+    }
+
+    it('is not shown before the New user button is clicked', () => {
+      mockGet.mockResolvedValue({ data: { users } })
+      renderWithQuery(<UsersPage />)
+
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    })
+
+    it('opens when the New user button is clicked', async () => {
+      const dialog = await openDialog()
+
+      expect(dialog).toBeInTheDocument()
+      expect(within(dialog).getByLabelText('Name')).toBeInTheDocument()
+    })
+
+    it('closes when Escape is pressed', async () => {
+      const dialog = await openDialog()
+
+      fireEvent.keyDown(dialog, { key: 'Escape' })
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('closes when clicking outside the dialog', async () => {
+      await openDialog()
+
+      // A full click: Radix defers outside dismissal of a left-button pointerdown until the click
+      fireEvent.pointerDown(document.body)
+      fireEvent.click(document.body)
+
+      await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument())
+    })
+
+    it('stays open when clicking inside the dialog', async () => {
+      const dialog = await openDialog()
+
+      const nameInput = within(dialog).getByLabelText('Name')
+      fireEvent.pointerDown(nameInput)
+      fireEvent.click(nameInput)
+      await act(() => new Promise((resolve) => setTimeout(resolve)))
+
+      expect(screen.getByRole('dialog', { name: 'Create user' })).toBeInTheDocument()
+    })
   })
 })

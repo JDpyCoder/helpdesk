@@ -87,6 +87,7 @@ Vitest + React Testing Library in jsdom, for the client only. Config is the `tes
 - Query like a user: `getByRole` with an accessible name first (`heading`, `table`, `row`, `cell`, `button`, `status` for skeletons), then `getByText`. Avoid test IDs and class names. Use `findBy…` to wait for data, and `queryBy…` with `.not.toBeInTheDocument()` to assert absence.
 - Assert user-visible output, including exact copy for messages ("Could not load users (HTTP 403)."). Build locale-dependent expectations (dates) the same way the component does, e.g. `toLocaleDateString()`.
 - Components that use routing or the session: wrap in `<MemoryRouter>` from `react-router`, and mock `@/lib/auth-client.ts` with `vi.mock` so `authClient.useSession()` returns the user you need. If a provider is needed in many specs, add a helper next to `renderWithQuery` in `src/test/` instead of repeating it.
+- Dismissing Radix dialogs: press Escape with `fireEvent.keyDown(dialog, { key: 'Escape' })`. For an outside click, first wait a tick after opening (Radix attaches its outside listener in a `setTimeout`), then fire **both** `pointerDown` and `click` on `document.body` — Radix waits for the click before closing on a left-button press, so `pointerDown` alone does nothing. See the "Create user dialog" tests in `UsersPage.test.tsx`.
 - jsdom has no layout or CSS. Don't test styling, visibility from CSS, or real navigation here; that belongs in E2E.
 
 ## End-to-end tests
