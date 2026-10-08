@@ -1,12 +1,14 @@
-import type { CreateUserInput } from 'core'
 import { AlertCircle } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Controller, type UseFormReturn } from 'react-hook-form'
 import { Alert, AlertDescription } from '@/components/ui/alert.tsx'
-import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.tsx'
+import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.tsx'
 import { Input } from '@/components/ui/input.tsx'
 
-export const userFormDefaults: CreateUserInput = { name: '', email: '', password: '' }
+// Shape of both CreateUserInput and UpdateUserInput from core
+export type UserFormValues = { name: string; email: string; password: string }
+
+export const userFormDefaults: UserFormValues = { name: '', email: '', password: '' }
 
 // Chromium browsers (Brave, Chrome) ignore autocomplete="off" on any form with an
 // <input type="password"> and fill in the signed-in admin's own saved login. So the
@@ -23,14 +25,18 @@ const noAutofill = {
 
 type UserFormProps = {
   // Owned by the caller, so it can reset the form and set root.serverError from a mutation
-  form: UseFormReturn<CreateUserInput>
-  onSubmit: (values: CreateUserInput) => void
+  form: UseFormReturn<UserFormValues>
+  onSubmit: (values: UserFormValues) => void
   // Action buttons, rendered after the fields (include a type="submit" button)
   children: ReactNode
+  // Editing: a blank password keeps the current one, so say so under the field
+  passwordOptional?: boolean
+  // Prefix for input ids/names, unique per form so two forms on a page never share ids
+  idPrefix?: string
 }
 
 // Name / email / password fields for a user, validated by the form's resolver
-function UserForm({ form, onSubmit, children }: UserFormProps) {
+function UserForm({ form, onSubmit, children, passwordOptional = false, idPrefix = 'new-user' }: UserFormProps) {
   const { errors } = form.formState
 
   return (
@@ -48,11 +54,11 @@ function UserForm({ form, onSubmit, children }: UserFormProps) {
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={`new-user-${field.name}`}>Name</FieldLabel>
+              <FieldLabel htmlFor={`${idPrefix}-${field.name}`}>Name</FieldLabel>
               <Input
                 {...field}
-                id={`new-user-${field.name}`}
-                name={`new-user-${field.name}`}
+                id={`${idPrefix}-${field.name}`}
+                name={`${idPrefix}-${field.name}`}
                 autoComplete="off"
                 aria-invalid={fieldState.invalid}
               />
@@ -66,11 +72,11 @@ function UserForm({ form, onSubmit, children }: UserFormProps) {
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={`new-user-${field.name}`}>Email</FieldLabel>
+              <FieldLabel htmlFor={`${idPrefix}-${field.name}`}>Email</FieldLabel>
               <Input
                 {...field}
-                id={`new-user-${field.name}`}
-                name={`new-user-${field.name}`}
+                id={`${idPrefix}-${field.name}`}
+                name={`${idPrefix}-${field.name}`}
                 {...noAutofill}
                 type="email"
                 placeholder="agent@example.com"
@@ -86,11 +92,11 @@ function UserForm({ form, onSubmit, children }: UserFormProps) {
           control={form.control}
           render={({ field, fieldState }) => (
             <Field data-invalid={fieldState.invalid}>
-              <FieldLabel htmlFor={`new-user-${field.name}`}>Password</FieldLabel>
+              <FieldLabel htmlFor={`${idPrefix}-${field.name}`}>Password</FieldLabel>
               <Input
                 {...field}
-                id={`new-user-${field.name}`}
-                name={`new-user-${field.name}`}
+                id={`${idPrefix}-${field.name}`}
+                name={`${idPrefix}-${field.name}`}
                 {...noAutofill}
                 // Masked text input, not type="password": see noAutofill above
                 type="text"
@@ -98,6 +104,9 @@ function UserForm({ form, onSubmit, children }: UserFormProps) {
                 className="[-webkit-text-security:disc]"
                 aria-invalid={fieldState.invalid}
               />
+              {passwordOptional && (
+                <FieldDescription>Leave blank to keep the current password.</FieldDescription>
+              )}
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
             </Field>
           )}

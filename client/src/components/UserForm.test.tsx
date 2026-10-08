@@ -45,6 +45,21 @@ describe('UserForm', () => {
     expect(screen.getByLabelText('Password')).toHaveValue('')
     expect(screen.getByRole('button', { name: 'Save' })).toBeInTheDocument()
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
+    expect(screen.queryByText('Leave blank to keep the current password.')).not.toBeInTheDocument()
+  })
+
+  it('explains that a blank password keeps the current one when the password is optional', () => {
+    function OptionalPassword() {
+      const optionalForm = useForm<CreateUserInput>({ defaultValues: userFormDefaults })
+      return (
+        <UserForm form={optionalForm} onSubmit={onSubmit} passwordOptional>
+          <button type="submit">Save</button>
+        </UserForm>
+      )
+    }
+    render(<OptionalPassword />)
+
+    expect(screen.getByText('Leave blank to keep the current password.')).toBeInTheDocument()
   })
 
   it('shows every required-field error when submitted empty', async () => {
@@ -99,9 +114,9 @@ describe('UserForm', () => {
     expect(onSubmit.mock.calls[0]?.[0]).toEqual({ name: 'Ada', email: valid.email, password: 'a'.repeat(128) })
   })
 
-  it('submits the parsed values: name trimmed, email lowercased', async () => {
+  it('submits the parsed values: name trimmed, email trimmed and lowercased', async () => {
     render(<Harness />)
-    fill({ name: '  Grace Hopper ', email: 'Grace@Example.COM', password: valid.password })
+    fill({ name: '  Grace Hopper ', email: '  Grace@Example.COM ', password: valid.password })
 
     submit()
 

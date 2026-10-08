@@ -28,13 +28,16 @@ test.describe('Users page', () => {
     await expect(page.getByText('People who can sign in to the helpdesk')).toBeVisible()
 
     const table = page.getByRole('table')
-    await expect(table.getByRole('columnheader')).toHaveText(['Name', 'Email', 'Role', 'Created'])
+    // The last header is screen-reader-only text for the edit buttons
+    await expect(table.getByRole('columnheader')).toHaveText(['Name', 'Email', 'Role', 'Created', 'Actions'])
 
     const adminRow = table.getByRole('row').filter({ hasText: admin.email })
-    await expect(adminRow.getByRole('cell')).toHaveText([admin.name, admin.email, 'Admin', /\S/])
+    await expect(adminRow.getByRole('cell')).toHaveText([admin.name, admin.email, 'Admin', /\S/, ''])
+    await expect(adminRow.getByRole('button', { name: `Edit ${admin.name}` })).toBeVisible()
 
     const agentRow = table.getByRole('row').filter({ hasText: agent.email })
-    await expect(agentRow.getByRole('cell')).toHaveText([agent.name, agent.email, 'Agent', /\S/])
+    await expect(agentRow.getByRole('cell')).toHaveText([agent.name, agent.email, 'Agent', /\S/, ''])
+    await expect(agentRow.getByRole('button', { name: `Edit ${agent.name}` })).toBeVisible()
   })
 
   test('shows "No users found." when the API returns an empty list', async ({ page, admin }) => {
@@ -128,7 +131,7 @@ test.describe('Create user dialog', () => {
 
     await expect(dialog).toBeHidden()
     const row = page.getByRole('table').getByRole('row').filter({ hasText: newUser.email })
-    await expect(row.getByRole('cell')).toHaveText([newUser.name, newUser.email, 'Agent', /\S/])
+    await expect(row.getByRole('cell')).toHaveText([newUser.name, newUser.email, 'Agent', /\S/, ''])
 
     // The new account works with the chosen password
     await page.getByRole('button', { name: 'Sign out' }).click()

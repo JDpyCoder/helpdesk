@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
+import EditUserDialog from '@/components/EditUserDialog.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Skeleton } from '@/components/ui/skeleton.tsx'
 import {
@@ -59,6 +60,7 @@ function UsersTable() {
           <TableHead>Email</TableHead>
           <TableHead>Role</TableHead>
           <TableHead>Created</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -72,6 +74,9 @@ function UsersTable() {
               </Badge>
             </TableCell>
             <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+            <TableCell className="text-right">
+              <EditUserDialog user={user} />
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>

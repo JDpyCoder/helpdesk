@@ -55,7 +55,7 @@ describe('UsersPage', () => {
     expect(screen.queryByRole('status', { name: 'Loading users' })).not.toBeInTheDocument()
 
     const headers = within(table).getAllByRole('columnheader').map((th) => th.textContent)
-    expect(headers).toEqual(['Name', 'Email', 'Role', 'Created'])
+    expect(headers).toEqual(['Name', 'Email', 'Role', 'Created', 'Actions'])
 
     const [, adminRow, agentRow] = within(table).getAllByRole('row')
     expect(within(adminRow).getAllByRole('cell').map((td) => td.textContent)).toEqual([
@@ -63,13 +63,25 @@ describe('UsersPage', () => {
       'ada@example.com',
       'Admin',
       new Date(users[0].createdAt).toLocaleDateString(),
+      '',
     ])
     expect(within(agentRow).getAllByRole('cell').map((td) => td.textContent)).toEqual([
       'Alan Agent',
       'alan@example.com',
       'Agent',
       new Date(users[1].createdAt).toLocaleDateString(),
+      '',
     ])
+  })
+
+  it('has an edit button in each row', async () => {
+    mockGet.mockResolvedValue({ data: { users } })
+    renderWithQuery(<UsersPage />)
+
+    const table = await screen.findByRole('table')
+    const [, adminRow, agentRow] = within(table).getAllByRole('row')
+    expect(within(adminRow).getByRole('button', { name: 'Edit Ada Admin' })).toBeInTheDocument()
+    expect(within(agentRow).getByRole('button', { name: 'Edit Alan Agent' })).toBeInTheDocument()
   })
 
   it('shows an empty message when there are no users', async () => {
