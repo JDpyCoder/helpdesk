@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { prisma } from "./db.ts";
+import { Role } from "./generated/prisma/enums.ts";
 
 const clientOrigin = process.env.CLIENT_ORIGIN;
 if (!clientOrigin) {
@@ -37,9 +38,9 @@ export const auth = betterAuth({
     additionalFields: {
       // Mirrors the Prisma `Role` enum; server-owned, so clients can't set it
       role: {
-        type: ["ADMIN", "AGENT"],
+        type: [Role.ADMIN, Role.AGENT],
         required: false,
-        defaultValue: "AGENT",
+        defaultValue: Role.AGENT,
         input: false,
       },
     },

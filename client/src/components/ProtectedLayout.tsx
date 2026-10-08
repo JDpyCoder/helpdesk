@@ -1,6 +1,7 @@
 import { Navigate, Outlet } from 'react-router'
 import { Skeleton } from '@/components/ui/skeleton.tsx'
 import { authClient } from '../lib/auth-client.ts'
+import { Role } from '../lib/roles.ts'
 import NavBar from './NavBar.tsx'
 
 // Wraps every page that requires a signed-in user
@@ -28,7 +29,7 @@ function ProtectedLayout() {
 
   return (
     <div className="min-h-screen bg-muted">
-      <NavBar userName={session.user.name} isAdmin={session.user.role === 'ADMIN'} />
+      <NavBar userName={session.user.name} isAdmin={session.user.role === Role.ADMIN} />
       <main className="mx-auto max-w-6xl p-4">
         <Outlet />
       </main>

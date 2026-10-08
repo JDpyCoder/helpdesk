@@ -19,7 +19,8 @@ Bun workspace monorepo with a single root `bun.lock`:
 - `client/` — React 19 + TypeScript + Vite 8 + Tailwind CSS v4 (`@tailwindcss/vite`) + shadcn/ui. Dev server on :5173 proxies `/api` to the server.
   - `src/pages/` — route pages; `src/components/` — app components (`NavBar`, `ProtectedLayout`, `AdminRoute`); `src/components/ui/` — shadcn components; `src/lib/` — `auth-client.ts` (Better Auth), `query-client.ts` (TanStack Query client + `errorMessage`), `utils.ts` (`cn`).
   - `components.json` — shadcn config. `src/index.css` holds the shadcn theme (CSS variables for light/dark) and is the only CSS file.
-- `server/` — Express 5 + TypeScript, run directly by Bun (no build step). `src/app.ts` defines the app; `src/index.ts` starts it on `PORT` (default 3000).
+- `core/` — code shared by client and server, published to both as the workspace package `core` (`"core": "workspace:*"`). No build step: `package.json` `exports` points at `src/index.ts`, and Vite and Bun both consume the TypeScript source. Holds zod schemas in `src/schemas/<resource>.ts`, re-exported from `src/index.ts`. Must stay runtime-agnostic (no Node/Bun/DOM APIs, no Prisma, no React); its only dependency is `zod`.
+- `server/` — Express 5 + TypeScript, run directly by Bun (no build step). `src/app.ts` defines the app (middleware, auth, `/api/me`, 404/error handlers) and mounts feature routers from `src/routes/` — one `express.Router()` per resource, e.g. `routes/users.ts` mounted at `/api/users`; put new endpoints for a resource in its router, not in `app.ts`. `src/index.ts` starts it on `PORT` (default 3000).
 
 ## Commands
 
@@ -29,7 +30,7 @@ Run from the repo root:
 - `bun run dev` — start client and server together
 - `bun run dev:client` / `bun run dev:server` — start one app
 - `bun run build` — production build of the client
-- `bun run typecheck` — typecheck the e2e files (root `tsconfig.json`), then the server, then typecheck + build the client
+- `bun run typecheck` — typecheck the e2e files (root `tsconfig.json`), then `core`, then the server, then typecheck + build the client
 
 - `bun run test` — client component tests, run once (see "Component tests" below)
 - `bun run test:e2e` — Playwright end-to-end tests (`test:e2e:ui` for UI mode, `test:e2e:report` for the last HTML report)
@@ -41,7 +42,7 @@ Run from `server/`:
 - `bun run db:seed` — create the initial admin from `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` (idempotent)
 - `bun run db:studio` — open Prisma Studio
 
-Add dependencies from inside the workspace directory (e.g. `cd server && bun add <pkg>`).
+Add dependencies from inside the workspace directory (e.g. `cd server && bun add <pkg>`). Keep `zod` on the same version range in `core`, `client` and `server` so there is a single copy.
 
 ## Authentication
 
@@ -53,7 +54,8 @@ Better Auth with email + password and database-backed sessions (PostgreSQL via P
 - **Protecting API routes** — add the `requireAuth` middleware (`server/src/middleware/requireAuth.ts`). It returns 401 JSON when there is no session; otherwise it puts `user` and `session` on `res.locals`. Type the handler as `Response<unknown, AuthLocals>` to get them typed. `GET /api/me` is the example.
 - **Schema** — `user`, `session`, `account`, `verification` tables in `server/prisma/schema.prisma` follow Better Auth's core schema. Passwords live in `account.password` (`providerId: "credential"`), not on `user`. If you change Better Auth config or plugins, update the Prisma schema to match and migrate.
 - **Roles** — `User.role` is a Prisma enum `ADMIN | AGENT` (default `AGENT`). It is registered as a Better Auth `user.additionalFields` entry (`input: false`, so clients can't set it), so `session.user.role` / `res.locals.user.role` are available and typed. The client mirrors the field with `inferAdditionalFields` in `auth-client.ts` — keep the two in sync.
-- **Admin-only pages (client)** — nest routes under `AdminRoute` (`client/src/components/AdminRoute.tsx`) inside `ProtectedLayout`; non-admins are redirected to `/`. This only hides UI — admin API routes still need a server-side role check: chain `requireAuth, requireAdmin` (`server/src/middleware/requireAdmin.ts`, returns 403 JSON for non-admins). `GET /api/users` is the example.
+- **Never hardcode role strings** (`"ADMIN"`, `'AGENT'`) in app code — use the `Role` enum. Server: `import { Role } from "./generated/prisma/enums.ts"`. Client: `import { Role } from '@/lib/roles.ts'`, which re-exports that same generated file (it has no Prisma runtime, so it bundles safely). Use `Role` as the type too (`role: Role`). Set roles explicitly when creating users (`role: Role.AGENT` in `POST /api/users` (`routes/users.ts`), `Role.ADMIN` in `seed.ts`). Test files may use string literals.
+- **Admin-only pages (client)** — nest routes under `AdminRoute` (`client/src/components/AdminRoute.tsx`) inside `ProtectedLayout`; non-admins are redirected to `/`. This only hides UI — admin API routes still need a server-side role check: chain `requireAuth, requireAdmin` (`server/src/middleware/requireAdmin.ts`, returns 403 JSON for non-admins) — per route, or once with `router.use(requireAuth, requireAdmin)` for an admin-only router. `server/src/routes/users.ts` is the example.
 - **Client** — `client/src/lib/auth-client.ts` exports `authClient` (`better-auth/react`) with no `baseURL`: requests are same-origin and Vite proxies `/api` to the server, so the session cookie works without CORS. Use `authClient.useSession()`, `authClient.signIn.email()`, and `authClient.signOut()`.
 - **Route protection (client)** — wrap protected routes in `ProtectedLayout` (`client/src/components/ProtectedLayout.tsx`, see `App.tsx`). It shows a loading state while the session is pending, redirects to `/login` with no session, and renders the `NavBar` (user name + sign out, plus a "Users" link when `isAdmin`). `LoginPage` redirects to `/` if already signed in.
 - **Rate limiting** — on only when `NODE_ENV=production` (`rateLimit.enabled` in `auth.ts`), with a tighter `/sign-in/email` rule (5 per 60s). Dev and e2e run without it. Production deploys **must** set `NODE_ENV=production`, or sign-in brute-force protection is silently off.
@@ -106,10 +108,13 @@ Playwright (Chromium) with `playwright.config.ts` at the root and specs in `e2e/
 - UI components come from shadcn/ui (Radix base, Nova preset, neutral). Add them from `client/` with `bunx --bun shadcn@latest add <component>`; they land in `src/components/ui/`. Use theme tokens (`bg-background`, `text-muted-foreground`, `text-destructive`, …) instead of raw palette colors. Import from `client/src` with the `@/` alias.
 - `cn` comes from the `cn` npm package (shadcn's drop-in replacement for clsx + tailwind-merge), not a local clsx/twMerge helper.
 - **Data fetching: always use axios + TanStack Query (React Query)** for client calls to `/api`. Never use `fetch`, and never use `useEffect` + `useState` to load server data.
-  - Reads: `useQuery({ queryKey, queryFn: () => axios.get<T>(url).then((res) => res.data) })`. See `UsersPage.tsx`.
+  - Reads: `useQuery({ queryKey, queryFn: () => axios.get<T>(url).then((res) => res.data) })`. See `UsersTable.tsx`.
   - Writes (create/edit/delete): `useMutation` with an axios call, then `queryClient.invalidateQueries({ queryKey })` on success so lists refetch.
   - The shared `queryClient` is in `client/src/lib/query-client.ts`. It registers `AxiosError` as the default error type, retries only network/5xx errors, and exports `errorMessage(error)` for display. `NavBar` clears the cache on sign-out.
   - Exception: auth calls go through `authClient` (Better Auth), not axios.
 - Build forms with react-hook-form + zod using shadcn's `Field` pattern: `<Controller>` → `<Field data-invalid>` → `FieldLabel` / `Input aria-invalid` / `FieldError`. Show server errors via `form.setError('root.serverError', …)` rendered in a destructive `Alert`. See `LoginPage.tsx`.
+  - Every form uses this pattern, including dialogs. Adding a user is the example: `UserForm.tsx` renders only the form (fields, server-error `Alert`, and `children` for the action buttons) and takes the `useForm` instance as a prop; `CreateUserDialog.tsx` owns that instance (the shared zod schema + `zodResolver`), the mutation, `form.reset()` when the dialog closes, and the mutation's `onError` that puts the server's `error` message into `root.serverError`. Keep form fields in their own component like this so another container (e.g. an edit dialog) can reuse them.
+  - Validate the same input on the server with zod (`schema.safeParse(req.body)` → 400 with `{ error, fieldErrors }`), as `POST /api/users` in `routes/users.ts` does.
+- **Zod schemas live in `core`, never inline in client or server.** Any schema for data that crosses the API (request bodies, query params) is defined once in `core/src/schemas/<resource>.ts`, exported along with its inferred type (`export type CreateUserInput = z.infer<typeof createUserSchema>`), and re-exported from `core/src/index.ts`. Both sides import it from `"core"`: the client form passes it to `zodResolver` and uses the type for `useForm<…>`/the mutation; the server router calls `.safeParse(req.body)`. Don't copy or re-declare a schema on either side — one definition means the rules and error messages can't drift. `createUserSchema` (used by `CreateUserDialog.tsx` and `routes/users.ts`) is the example. Server-only concerns (e.g. uniqueness checks against the database) stay in the route handler, not the schema. Transforms like `.trim()`/`.toLowerCase()` are fine — they also run in the client before submit.
 - `src/components/ui/` files are ours and may be customized. `input.tsx` has an autofill reset that hides Chrome's autofill background — re-apply it if the component is regenerated with `shadcn add input --overwrite`.
 - Secrets go in `server/.env` (git-ignored); document new variables in `server/.env.example`.

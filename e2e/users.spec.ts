@@ -1,6 +1,22 @@
-import { expect, failApiRoute, signIn, signInViaApi, test } from './fixtures'
+import {
+  CLIENT_ORIGIN,
+  expect,
+  failApiRoute,
+  signIn,
+  signInViaApi,
+  submitLoginForm,
+  test,
+  uniqueEmail,
+} from './fixtures'
+import type { Locator } from '@playwright/test'
 
 type ApiUser = { id: string; name: string; email: string; role: string; createdAt: string }
+
+async function fillCreateUserForm(dialog: Locator, values: { name: string; email: string; password: string }) {
+  await dialog.getByLabel('Name').fill(values.name)
+  await dialog.getByLabel('Email').fill(values.email)
+  await dialog.getByLabel('Password').fill(values.password)
+}
 
 test.describe('Users page', () => {
   test('admin sees the users table with the admin and agent rows', async ({ page, admin, agent }) => {
@@ -92,6 +108,175 @@ test.describe('Users API: GET /api/users', () => {
 
   test('returns 401 without a session', async ({ request }) => {
     const res = await request.get('/api/users')
+
+    expect(res.status()).toBe(401)
+    expect(await res.json()).toEqual({ error: 'Unauthorized' })
+  })
+})
+
+test.describe('Create user dialog', () => {
+  test('admin creates an agent who appears in the table and can sign in', async ({ page, admin }) => {
+    const newUser = { name: 'Created Agent', email: uniqueEmail('created'), password: 'created-agent-pw' }
+    await signIn(page, admin)
+    await page.goto('/users')
+
+    await page.getByRole('button', { name: 'New user' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Create user' })
+    await expect(dialog).toBeVisible()
+    await fillCreateUserForm(dialog, newUser)
+    await dialog.getByRole('button', { name: 'Create user' }).click()
+
+    await expect(dialog).toBeHidden()
+    const row = page.getByRole('table').getByRole('row').filter({ hasText: newUser.email })
+    await expect(row.getByRole('cell')).toHaveText([newUser.name, newUser.email, 'Agent', /\S/])
+
+    // The new account works with the chosen password
+    await page.getByRole('button', { name: 'Sign out' }).click()
+    await expect(page).toHaveURL('/login')
+    await submitLoginForm(page, newUser)
+    const me = await (await page.request.get('/api/me')).json()
+    expect(me.user).toMatchObject({ email: newUser.email, name: newUser.name, role: 'AGENT' })
+  })
+
+  test('shows the duplicate-email error and keeps the dialog open', async ({ page, admin, agent }) => {
+    await signIn(page, admin)
+    await page.goto('/users')
+
+    await page.getByRole('button', { name: 'New user' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Create user' })
+    await fillCreateUserForm(dialog, { name: 'Duplicate Agent', email: agent.email, password: 'duplicate-pw-123' })
+    await dialog.getByRole('button', { name: 'Create user' }).click()
+
+    await expect(dialog.getByRole('alert')).toHaveText('A user with this email already exists')
+    await expect(dialog).toBeVisible()
+    await expect(dialog.getByLabel('Email')).toHaveValue(agent.email)
+
+    // Still exactly one row for that email
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+    await expect(dialog).toBeHidden()
+    await expect(page.getByRole('table').getByRole('row').filter({ hasText: agent.email })).toHaveCount(1)
+  })
+
+  test('Cancel closes the dialog without creating a user', async ({ page, admin }) => {
+    const email = uniqueEmail('cancelled')
+    await signIn(page, admin)
+    await page.goto('/users')
+
+    await page.getByRole('button', { name: 'New user' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Create user' })
+    await fillCreateUserForm(dialog, { name: 'Cancelled Agent', email, password: 'cancelled-pw-123' })
+    await dialog.getByRole('button', { name: 'Cancel' }).click()
+
+    await expect(dialog).toBeHidden()
+    const { users } = (await (await page.request.get('/api/users')).json()) as { users: ApiUser[] }
+    expect(users.map((u) => u.email)).not.toContain(email)
+  })
+
+  test('has no password-type input for autofill to target, and fields start empty', async ({ page, admin }) => {
+    await signIn(page, admin)
+    await page.goto('/users')
+
+    await page.getByRole('button', { name: 'New user' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Create user' })
+    await expect(dialog).toBeVisible()
+
+    // Browsers offer saved credentials for type="password" inputs; the dialog has none
+    await expect(dialog.locator('input[type="password"]')).toHaveCount(0)
+    for (const label of ['Name', 'Email', 'Password']) {
+      const input = dialog.getByLabel(label)
+      await expect(input).toBeEditable()
+      await expect(input).toHaveValue('')
+    }
+  })
+})
+
+test.describe('Users API: POST /api/users', () => {
+  const headers = { Origin: CLIENT_ORIGIN }
+
+  test('creates an AGENT for an admin, ignoring a requested role', async ({ request, admin }) => {
+    await signInViaApi(request, admin)
+    const email = uniqueEmail('api-created')
+
+    const res = await request.post('/api/users', {
+      data: { name: '  Api Agent  ', email: email.toUpperCase(), password: 'api-agent-pw', role: 'ADMIN' },
+      headers,
+    })
+
+    expect(res.status(), await res.text()).toBe(201)
+    const { user } = (await res.json()) as { user: ApiUser }
+    expect(user).toMatchObject({ name: 'Api Agent', email, role: 'AGENT' })
+    expect(Object.keys(user).sort()).toEqual(['createdAt', 'email', 'id', 'name', 'role'])
+
+    // The account can sign in with the given password
+    await signInViaApi(request, { email, password: 'api-agent-pw' })
+    expect((await (await request.get('/api/me')).json()).user).toMatchObject({ email, role: 'AGENT' })
+  })
+
+  test('returns 409 for an email that already exists, case-insensitively', async ({ request, admin, agent }) => {
+    await signInViaApi(request, admin)
+
+    const res = await request.post('/api/users', {
+      data: { name: 'Duplicate', email: agent.email.toUpperCase(), password: 'duplicate-pw' },
+      headers,
+    })
+
+    expect(res.status()).toBe(409)
+    expect(await res.json()).toEqual({ error: 'A user with this email already exists' })
+  })
+
+  test('returns 400 with field errors for an invalid body', async ({ request, admin }) => {
+    await signInViaApi(request, admin)
+
+    const res = await request.post('/api/users', {
+      data: { name: ' ab ', email: 'not-an-email', password: 'short' },
+      headers,
+    })
+
+    expect(res.status()).toBe(400)
+    const body = await res.json()
+    expect(body.error).toBe('Name must be at least 3 characters')
+    expect(body.fieldErrors).toEqual({
+      name: ['Name must be at least 3 characters'],
+      email: ['Enter a valid email address'],
+      password: ['Password must be at least 8 characters'],
+    })
+  })
+
+  test('returns 400 for a password longer than 128 characters', async ({ request, admin }) => {
+    await signInViaApi(request, admin)
+
+    const res = await request.post('/api/users', {
+      data: { name: 'Long Password', email: uniqueEmail('long-pw'), password: 'x'.repeat(129) },
+      headers,
+    })
+
+    expect(res.status()).toBe(400)
+    expect((await res.json()).error).toBe('Password must be at most 128 characters')
+  })
+
+  test('returns 403 Forbidden to an agent and creates no user', async ({ request, agent }) => {
+    await signInViaApi(request, agent)
+    const email = uniqueEmail('agent-attempt')
+
+    const res = await request.post('/api/users', {
+      data: { name: 'Sneaky Agent', email, password: 'sneaky-agent-pw' },
+      headers,
+    })
+
+    expect(res.status()).toBe(403)
+    expect(await res.json()).toEqual({ error: 'Forbidden' })
+    const signInRes = await request.post('/api/auth/sign-in/email', {
+      data: { email, password: 'sneaky-agent-pw' },
+      headers,
+    })
+    expect(signInRes.status()).toBe(401)
+  })
+
+  test('returns 401 without a session', async ({ request }) => {
+    const res = await request.post('/api/users', {
+      data: { name: 'Anonymous', email: uniqueEmail('anon'), password: 'anonymous-pw' },
+      headers,
+    })
 
     expect(res.status()).toBe(401)
     expect(await res.json()).toEqual({ error: 'Unauthorized' })
