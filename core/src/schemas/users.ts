@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+// Must match the Role enum in server/prisma/schema.prisma. `Role` is both the value (Role.ADMIN) and the type.
+export const roleSchema = z.enum(["ADMIN", "AGENT"]);
+export const Role = roleSchema.enum;
+export type Role = z.infer<typeof roleSchema>;
+
 const nameField = z.string().trim().min(3, "Name must be at least 3 characters");
 // Trim before validating, so pasted addresses with surrounding spaces are accepted
 const emailField = z.string().trim().toLowerCase().pipe(z.email("Enter a valid email address"));

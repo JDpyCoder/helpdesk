@@ -17,7 +17,7 @@ import {
 import { Button } from '@/components/ui/button.tsx'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip.tsx'
 import { errorMessage } from '@/lib/query-client.ts'
-import { Role } from '@/lib/roles.ts'
+import { Role } from 'core'
 
 function DeleteUserDialog({ user }: { user: User }) {
   const [open, setOpen] = useState(false)

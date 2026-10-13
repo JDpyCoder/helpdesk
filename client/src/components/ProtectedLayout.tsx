@@ -1,7 +1,7 @@
 import { Navigate, Outlet } from 'react-router'
 import { Skeleton } from '@/components/ui/skeleton.tsx'
 import { authClient } from '../lib/auth-client.ts'
-import { Role } from '../lib/roles.ts'
+import { Role } from 'core'
 import NavBar from './NavBar.tsx'
 
 // Wraps every page that requires a signed-in user

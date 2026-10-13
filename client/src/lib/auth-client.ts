@@ -1,6 +1,6 @@
 import { createAuthClient } from 'better-auth/react'
 import { inferAdditionalFields } from 'better-auth/client/plugins'
-import { Role } from './roles.ts'
+import { Role } from 'core'
 
 // No baseURL: the client is served from the same origin and Vite proxies /api
 // to the server, so the default /api/auth base path and session cookie just work

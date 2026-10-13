@@ -4,6 +4,8 @@ import { toNodeHandler } from "better-auth/node";
 import { auth } from "./auth.ts";
 import { prisma } from "./db.ts";
 import { requireAuth, type AuthLocals } from "./middleware/requireAuth.ts";
+import { requireInboundSecret } from "./middleware/requireInboundSecret.ts";
+import { inboundEmailRouter } from "./routes/inbound-email.ts";
 import { usersRouter } from "./routes/users.ts";
 
 export const app = express();
@@ -29,6 +31,10 @@ app.use((req, _res, next) => {
 
 // Better Auth reads the raw body itself, so it must be mounted before express.json()
 app.all("/api/auth/*splat", toNodeHandler(auth));
+
+// Emails can outgrow the default 100kb JSON limit, so this route parses its own body —
+// and only after the secret checks out, so unauthenticated callers can't make us parse 1mb
+app.use("/api/inbound-email", requireInboundSecret, express.json({ limit: "1mb" }), inboundEmailRouter);
 
 app.use(express.json());
 
@@ -62,7 +68,12 @@ app.use("/api", (req, res) => {
 });
 
 // Express 5 forwards rejected promises from async handlers here automatically
-app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+app.use((err: Error & { status?: number; type?: string }, _req: Request, res: Response, _next: NextFunction) => {
+  // Body-parser rejections (malformed JSON, body too large) are the client's fault: pass on their 4xx
+  if (err.type?.startsWith("entity.") && err.status && err.status < 500) {
+    res.status(err.status).json({ error: err.message });
+    return;
+  }
   console.error(err);
   res.status(500).json({ error: "Internal Server Error" });
 });

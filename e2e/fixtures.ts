@@ -63,6 +63,38 @@ export function createUser(options: { role?: Role; name?: string; email?: string
   return user
 }
 
+// The bearer token POST /api/inbound-email requires (INBOUND_EMAIL_SECRET in server/.env.test)
+export function inboundEmailHeaders(): Record<string, string> {
+  return { Authorization: `Bearer ${requireEnv('INBOUND_EMAIL_SECRET')}` }
+}
+
+// Unique per call, so tests never collide on ticket_message.messageId
+export function uniqueMessageId(prefix = 'msg'): string {
+  return `<${prefix}-${Date.now()}-${randomUUID().slice(0, 8)}@mail.example.com>`
+}
+
+export type StoredTicket = {
+  id: number
+  subject: string
+  fromEmail: string
+  fromName: string
+  status: 'OPEN' | 'RESOLVED' | 'CLOSED'
+  category: string | null
+  messages: { id: number; ticketId: number; messageId: string | null; fromEmail: string; fromName: string; body: string; receivedAt: string }[]
+}
+
+// Reads a ticket and its messages straight from the test database (there is no ticket
+// API yet), via server/src/read-test-ticket.ts. Returns null if it doesn't exist.
+// Pass `setStatus` to change the ticket's status in the database before reading it.
+export function readTicket(id: number, setStatus?: StoredTicket['status']): StoredTicket | null {
+  const out = execFileSync('bun', ['src/read-test-ticket.ts'], {
+    cwd: 'server',
+    env: { ...process.env, E2E_TICKET_ID: String(id), ...(setStatus && { E2E_TICKET_SET_STATUS: setStatus }) },
+    stdio: 'pipe',
+  })
+  return JSON.parse(out.toString('utf8')) as StoredTicket | null
+}
+
 // Signs in through the login form and waits until the app shows the signed-in layout
 export async function signIn(page: Page, user: Credentials) {
   await page.goto('/login')

@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router'
 import { authClient } from '../lib/auth-client.ts'
-import { Role } from '../lib/roles.ts'
+import { Role } from 'core'
 
 // Nest inside ProtectedLayout: the session is already loaded and non-null there
 function AdminRoute() {

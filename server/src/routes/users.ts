@@ -1,9 +1,9 @@
 import { createUserSchema, updateUserSchema } from "core";
 import { Router, type Response } from "express";
-import { z } from "zod";
 import { auth } from "../auth.ts";
 import { prisma } from "../db.ts";
 import { Role } from "../generated/prisma/enums.ts";
+import { sendValidationError } from "../lib/validation.ts";
 import { requireAdmin } from "../middleware/requireAdmin.ts";
 import { requireAuth, type AuthLocals } from "../middleware/requireAuth.ts";
 
@@ -14,12 +14,6 @@ usersRouter.use(requireAuth, requireAdmin);
 
 // Explicit select: never leak sessions, accounts, or password hashes
 const userSelect = { id: true, name: true, email: true, role: true, createdAt: true } as const;
-
-// 400 with the first message (for display) plus per-field messages
-function sendValidationError(res: Response, error: z.ZodError) {
-  const { fieldErrors } = z.flattenError(error);
-  res.status(400).json({ error: error.issues[0]?.message ?? "Invalid input", fieldErrors });
-}
 
 usersRouter.get("/", async (_req, res) => {
   const users = await prisma.user.findMany({

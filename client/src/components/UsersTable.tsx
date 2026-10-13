@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table.tsx'
 import { errorMessage } from '@/lib/query-client.ts'
-import { Role } from '@/lib/roles.ts'
+import { Role } from 'core'
 
 export type User = {
   id: string
