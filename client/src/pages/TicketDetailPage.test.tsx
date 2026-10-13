@@ -37,6 +37,18 @@ const ticket = {
   ],
 }
 
+const agents = [
+  { id: 'u1', name: 'Alan Agent' },
+  { id: 'u2', name: 'Bea Agent' },
+]
+
+// GET /api/tickets/:id answers with the ticket, GET /api/agents (for the assignee select) with the agents
+function mockApi(detail: unknown = ticket) {
+  mockGet.mockImplementation((url) =>
+    Promise.resolve(url === '/api/agents' ? { data: { agents } } : { data: { ticket: detail } })
+  )
+}
+
 function renderPage(path = '/tickets/42') {
   return renderWithQuery(
     <MemoryRouter initialEntries={[path]}>
@@ -65,16 +77,17 @@ describe('TicketDetailPage', () => {
   })
 
   it('requests the ticket from the URL id', async () => {
-    mockGet.mockResolvedValue({ data: { ticket } })
+    mockApi()
     renderPage()
 
     await screen.findByRole('heading', { level: 1 })
-    expect(mockGet).toHaveBeenCalledTimes(1)
     expect(mockGet).toHaveBeenCalledWith('/api/tickets/42')
+    expect(mockGet).toHaveBeenCalledWith('/api/agents')
+    expect(mockGet).toHaveBeenCalledTimes(2)
   })
 
   it('shows the ticket details', async () => {
-    mockGet.mockResolvedValue({ data: { ticket } })
+    mockApi()
     renderPage()
 
     expect(await screen.findByRole('heading', { level: 1, name: '#42 Refund for my course' })).toBeInTheDocument()
@@ -85,26 +98,25 @@ describe('TicketDetailPage', () => {
       'Assigned to',
       'Created',
     ])
-    expect(screen.getAllByRole('definition').map((dd) => dd.textContent)).toEqual([
-      'Open',
-      'Refund request',
-      'Alan Agent',
-      new Date(ticket.createdAt).toLocaleString(),
-    ])
+    const [status, category, , created] = screen.getAllByRole('definition')
+    expect(status).toHaveTextContent('Open')
+    expect(category).toHaveTextContent('Refund request')
+    expect(created).toHaveTextContent(new Date(ticket.createdAt).toLocaleString())
+    expect(screen.getByRole('combobox', { name: 'Assigned to' })).toHaveDisplayValue('Alan Agent')
   })
 
   it('shows placeholders for an unclassified, unassigned ticket', async () => {
-    mockGet.mockResolvedValue({ data: { ticket: { ...ticket, category: null, assignedTo: null } } })
+    mockApi({ ...ticket, category: null, assignedTo: null })
     renderPage()
 
     await screen.findByRole('heading', { level: 1 })
-    const [, category, assignedTo] = screen.getAllByRole('definition')
+    const [, category] = screen.getAllByRole('definition')
     expect(category).toHaveTextContent('Unclassified')
-    expect(assignedTo).toHaveTextContent('Unassigned')
+    expect(screen.getByRole('combobox', { name: 'Assigned to' })).toHaveDisplayValue('Unassigned')
   })
 
   it('shows every message in order with its sender, time and body', async () => {
-    mockGet.mockResolvedValue({ data: { ticket } })
+    mockApi()
     renderPage()
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Messages (2)' })).toBeInTheDocument()

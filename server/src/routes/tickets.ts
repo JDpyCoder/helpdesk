@@ -1,7 +1,8 @@
-import { listTicketsQuerySchema, ticketIdSchema, UNCLASSIFIED } from "core";
+import { listTicketsQuerySchema, ticketIdSchema, UNCLASSIFIED, updateTicketSchema } from "core";
 import { Router } from "express";
 import { prisma } from "../db.ts";
 import type { Prisma } from "../generated/prisma/client.ts";
+import { Role } from "../generated/prisma/enums.ts";
 import { sendValidationError } from "../lib/validation.ts";
 import { requireAuth } from "../middleware/requireAuth.ts";
 
@@ -71,7 +72,15 @@ ticketsRouter.get("/", async (req, res) => {
   res.json({ tickets, total, page, pageSize });
 });
 
-// One ticket with its whole conversation, oldest message first
+// The detail view: list columns plus the whole conversation, oldest message first
+const ticketDetailSelect = {
+  ...ticketListSelect,
+  messages: {
+    select: { id: true, fromEmail: true, fromName: true, body: true, receivedAt: true },
+    orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+  },
+} as const satisfies Prisma.TicketSelect;
+
 ticketsRouter.get("/:id", async (req, res) => {
   const parsed = ticketIdSchema.safeParse(req.params.id);
   if (!parsed.success) {
@@ -79,19 +88,50 @@ ticketsRouter.get("/:id", async (req, res) => {
     return;
   }
 
-  const ticket = await prisma.ticket.findUnique({
-    where: { id: parsed.data },
-    select: {
-      ...ticketListSelect,
-      messages: {
-        select: { id: true, fromEmail: true, fromName: true, body: true, receivedAt: true },
-        orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
-      },
-    },
-  });
+  const ticket = await prisma.ticket.findUnique({ where: { id: parsed.data }, select: ticketDetailSelect });
   if (!ticket) {
     res.status(404).json({ error: "Ticket not found" });
     return;
   }
+  res.json({ ticket });
+});
+
+// Changes status, category and/or assignee; omitted fields are left as they are, null clears.
+// The assignee must be an active agent. Returns the updated ticket in the detail shape.
+ticketsRouter.patch("/:id", async (req, res) => {
+  const parsedId = ticketIdSchema.safeParse(req.params.id);
+  if (!parsedId.success) {
+    sendValidationError(res, parsedId.error);
+    return;
+  }
+  const parsed = updateTicketSchema.safeParse(req.body);
+  if (!parsed.success) {
+    sendValidationError(res, parsed.error);
+    return;
+  }
+  const id = parsedId.data;
+  const { status, category, assignedToId } = parsed.data;
+
+  if (!(await prisma.ticket.findUnique({ where: { id }, select: { id: true } }))) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  if (assignedToId != null) {
+    const assignee = await prisma.user.findFirst({
+      where: { id: assignedToId, role: Role.AGENT, deletedAt: null },
+      select: { id: true },
+    });
+    if (!assignee) {
+      const error = "Tickets can only be assigned to an active agent";
+      res.status(400).json({ error, fieldErrors: { assignedToId: [error] } });
+      return;
+    }
+  }
+
+  const ticket = await prisma.ticket.update({
+    where: { id },
+    data: { status, category, assignedToId },
+    select: ticketDetailSelect,
+  });
   res.json({ ticket });
 });

@@ -3,6 +3,7 @@ import axios from 'axios'
 import { ArrowLeft } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
+import TicketAssigneeSelect from '@/components/TicketAssigneeSelect.tsx'
 import type { TicketListItem } from '@/components/TicketsTable.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
@@ -102,7 +103,7 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
             )}
           </DetailItem>
           <DetailItem label="Assigned to">
-            {ticket.assignedTo?.name ?? <span className="text-muted-foreground">Unassigned</span>}
+            <TicketAssigneeSelect ticket={ticket} />
           </DetailItem>
           <DetailItem label="Created">{new Date(ticket.createdAt).toLocaleString()}</DetailItem>
         </dl>

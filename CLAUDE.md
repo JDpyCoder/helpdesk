@@ -32,7 +32,7 @@ Run from the repo root:
 - `bun run build` — production build of the client
 - `bun run typecheck` — typecheck the e2e files (root `tsconfig.json`), then `core`, then the server, then typecheck + build the client
 
-- `bun run test` — client component tests, run once (see "Component tests" below)
+- `bun run test` — server unit tests, then client component tests, run once (see "Server unit tests" and "Component tests" below)
 - `bun run test:e2e` — Playwright end-to-end tests (`test:e2e:ui` for UI mode, `test:e2e:report` for the last HTML report)
 
 Run from `server/`:
@@ -86,6 +86,7 @@ There is no email provider yet. Support mail enters through a provider-agnostic 
 - **Ticket search** — `?search=` (trimmed, max 200; blank = no search) matches subject, `fromName` or `fromEmail` case-insensitively (Prisma `contains` + `mode: "insensitive"`), and `42` / `#42` also matches ticket id 42 (`searchWhere` in `routes/tickets.ts`). It combines with the filters and sorting. On the client it is TanStack's `globalFilter` (`globalFilteringFeature`, manual): the search box updates it immediately, and `useDebouncedValue` (`src/lib/use-debounced-value.ts`, `SEARCH_DEBOUNCE_MS` = 300) delays what goes into the params/query key until typing pauses. "Clear filters" also clears the search.
 - **Ticket pagination** — `?page=` (1-based, default 1) and `?pageSize=` (one of `TICKET_PAGE_SIZES` = 10/25/50/100, default `DEFAULT_TICKET_PAGE_SIZE` = 10; both coerced from strings) in `listTicketsQuerySchema`. The response is `{ tickets, total, page, pageSize }`, where `total` counts all matching tickets; a page past the end returns `tickets: []` with the real `total`. The `id` tie-breaker in `orderBy` keeps pages stable. Client: `rowPaginationFeature` with `manualPagination` and `rowCount: total`; `pagination` state (0-based `pageIndex`) is sent as `page`/`pageSize` and is part of the query key. Changing the sort, a filter or the (debounced) search resets to page 1; if the current page is past the end, the table moves to the last page. The footer (`nav` "Pagination") shows "Showing 26–50 of 101 tickets", a "Rows per page" select (`setPageSize` keeps the first visible row on screen) and First/Previous/Next/Last buttons. While a re-sorted/re-filtered list loads, the previous rows stay, dimmed, with `aria-busy` on the table.
 - **Ticket detail** — `GET /api/tickets/:id` (`requireAuth`) validates the id with `ticketIdSchema` (`core`; positive int, malformed → 400) and returns `{ ticket }`: the list columns plus `messages` (`id`, `fromEmail`, `fromName`, `body`, `receivedAt`), oldest first; unknown id → 404. The client page is `/tickets/:id` (`TicketDetailPage`), reached from the Subject link in `TicketsTable`; query key `['tickets', id]`, so invalidating `['tickets']` refreshes it too. A malformed URL id shows "Ticket not found." without a request. Status/category labels and badge variants are shared by both pages in `src/lib/ticket-labels.ts`. Because subjects are `Link`s, `TicketsPage.test.tsx` renders inside a `MemoryRouter`.
+- **Ticket updates and assignment** — `PATCH /api/tickets/:id` (`requireAuth`) validates the body with `updateTicketSchema` (`status`, `category`, `assignedToId`; omitted = unchanged, null clears) and returns `{ ticket }` in the detail shape; unknown id → 404. A non-null `assignedToId` must be an active agent (`role: Role.AGENT`, `deletedAt: null`), otherwise 400 with `fieldErrors.assignedToId`. Assignee options come from `GET /api/agents` (`routes/agents.ts`, `requireAuth`: `{ agents: [{ id, name }] }`, active agents by name), because `/api/users` is admin-only. On the client, `TicketAssigneeSelect` (in the detail page's "Assigned to" item) is a `NativeSelect` that saves on change: it shows the pending choice while disabled, then `setQueryData(['tickets', id])` and invalidates `['tickets']`. A current assignee missing from `/api/agents` (e.g. soft-deleted) stays in the options so the select still shows them. Soft-deleting an agent does not unassign their tickets.
 - **Env** — `INBOUND_EMAIL_SECRET` in `server/.env` and `server/.env.test` (generate with `openssl rand -base64 32`).
 
 ## Component tests
@@ -116,6 +117,15 @@ Vitest + React Testing Library in jsdom, for the client only. Config is the `tes
 - Components that use routing or the session: wrap in `<MemoryRouter>` from `react-router`, and mock `@/lib/auth-client.ts` with `vi.mock` so `authClient.useSession()` returns the user you need. If a provider is needed in many specs, add a helper next to `renderWithQuery` in `src/test/` instead of repeating it.
 - Dismissing Radix dialogs: press Escape with `fireEvent.keyDown(dialog, { key: 'Escape' })`. For an outside click, first wait a tick after opening (Radix attaches its outside listener in a `setTimeout`), then fire **both** `pointerDown` and `click` on `document.body` — Radix waits for the click before closing on a left-button press, so `pointerDown` alone does nothing. See the "Create user dialog" tests in `UsersPage.test.tsx`.
 - jsdom has no layout or CSS. Don't test styling, visibility from CSS, or real navigation here; that belongs in E2E.
+
+## Server unit tests
+
+`bun test` (Bun's built-in runner, `import { … } from "bun:test"`), run with `bun run test` from `server/` or the root. Specs sit next to the code as `src/**/<name>.test.ts`. Reference spec: `server/src/routes/tickets.test.ts`.
+
+- Use them for route logic that is cheaper to check without a database: validation branches, which Prisma calls are made and with what arguments, and what is skipped on early returns.
+- Mock `../db.ts` (`prisma`) and `../middleware/requireAuth.ts` with `mock.module`, then load the router with a dynamic `await import(...)` **after** the mocks, so the real Prisma client (which needs `DATABASE_URL`) and Better Auth never load. Mount the router on a bare `express()` with `express.json()`, `listen(0)`, and call it with `fetch`.
+- Reset the mocks in `afterEach` (`mockReset()`).
+- Behaviour that depends on the real database or sessions (constraints, ordering, auth) still belongs in E2E.
 
 ## End-to-end tests
 
