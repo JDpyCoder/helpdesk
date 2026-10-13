@@ -1,5 +1,13 @@
 import type { APIRequestContext } from '@playwright/test'
-import { expect, inboundEmailHeaders, readTicket, test, uniqueEmail, uniqueMessageId } from './fixtures'
+import {
+  expect,
+  inboundEmailHeaders,
+  readTicket,
+  signInViaApi,
+  test,
+  uniqueEmail,
+  uniqueMessageId,
+} from './fixtures'
 
 // POST /api/inbound-email: the webhook that turns a received email into a ticket.
 // Not session-authenticated; it needs `Authorization: Bearer <INBOUND_EMAIL_SECRET>`.
@@ -73,6 +81,15 @@ test.describe('Inbound email: authentication', () => {
     })
 
     expect(res.status()).toBe(401)
+  })
+
+  test('does not accept a signed-in user session in place of the secret', async ({ request, admin }) => {
+    await signInViaApi(request, admin)
+
+    const res = await request.post(ENDPOINT, { data: email() })
+
+    expect(res.status()).toBe(401)
+    expect(await res.json()).toEqual({ error: 'Unauthorized' })
   })
 
   test('does not store a ticket for an unauthenticated request', async ({ request }) => {
@@ -158,6 +175,42 @@ test.describe('Inbound email: validation', () => {
     expect((await res.json()).fieldErrors).toHaveProperty('receivedAt')
   })
 
+  test('rejects a subject over 998 characters with 400', async ({ request }) => {
+    const res = await postEmail(request, email({ subject: 's'.repeat(999) }))
+
+    expect(res.status()).toBe(400)
+    const json = await res.json()
+    expect(json.error).toBe('Subject must be at most 998 characters')
+    expect(json.fieldErrors).toHaveProperty('subject')
+  })
+
+  for (const [label, messageId] of [['a blank', '   '], ['a 999-character', `<${'m'.repeat(997)}>`]] as const) {
+    test(`rejects ${label} messageId with 400`, async ({ request }) => {
+      const res = await postEmail(request, email({ messageId }))
+
+      expect(res.status()).toBe(400)
+      expect((await res.json()).fieldErrors).toHaveProperty('messageId')
+    })
+  }
+
+  test('rejects more than 100 references with 400', async ({ request }) => {
+    const references = Array.from({ length: 101 }, () => uniqueMessageId('ref'))
+    const res = await postEmail(request, email({ references }))
+
+    expect(res.status()).toBe(400)
+    expect((await res.json()).fieldErrors).toHaveProperty('references')
+  })
+
+  test('rejects a non-JSON body with 400, not a server error', async ({ request }) => {
+    const res = await request.post(ENDPOINT, {
+      data: 'from=casey@example.com&subject=Hi',
+      headers: { ...inboundEmailHeaders(), 'Content-Type': 'text/plain' },
+    })
+
+    expect(res.status()).toBe(400)
+    expect((await res.json()).error).toEqual(expect.any(String))
+  })
+
   test('rejects malformed JSON with 400', async ({ request }) => {
     const res = await request.post(ENDPOINT, {
       data: '{"from": {"email": ',
@@ -213,6 +266,21 @@ test.describe('Inbound email: new tickets', () => {
     expect(readTicket(ticketId)!.subject).toBe('(no subject)')
   })
 
+  test('stores a receivedAt with a timezone offset as the same instant in UTC', async ({ request }) => {
+    const ticketId = await createTicket(request, email({ receivedAt: '2026-10-01T11:30:00+02:00' }))
+
+    expect(readTicket(ticketId)!.messages[0].receivedAt).toBe('2026-10-01T09:30:00.000Z')
+  })
+
+  test('creates a separate ticket each time for repeated emails without a messageId', async ({ request }) => {
+    // Without a Message-ID there is nothing to deduplicate on
+    const body = email({ messageId: undefined })
+    const first = await createTicket(request, body)
+    const second = await createTicket(request, body)
+
+    expect(second).not.toBe(first)
+  })
+
   test('creates a ticket for an email without a messageId', async ({ request }) => {
     const ticketId = await createTicket(request, email({ messageId: undefined }))
 
@@ -259,6 +327,63 @@ test.describe('Inbound email: duplicates', () => {
     expect(await res.json()).toEqual({ ticketId, created: false, duplicate: true })
     expect(readTicket(ticketId)!.messages).toHaveLength(2)
   })
+
+  test('matches a repeated messageId after trimming surrounding whitespace', async ({ request }) => {
+    const body = email()
+    const ticketId = await createTicket(request, body)
+
+    const res = await postEmail(request, { ...body, messageId: `  ${body.messageId}  ` })
+
+    expect(res.status()).toBe(200)
+    expect(await res.json()).toEqual({ ticketId, created: false, duplicate: true })
+  })
+
+  test('does not reopen a resolved ticket when the original email is redelivered', async ({ request }) => {
+    const body = email()
+    const ticketId = await createTicket(request, body)
+    readTicket(ticketId, 'RESOLVED')
+
+    const res = await postEmail(request, body)
+
+    expect(await res.json()).toEqual({ ticketId, created: false, duplicate: true })
+    expect(readTicket(ticketId)!.status).toBe('RESOLVED')
+  })
+
+  test('stores a new email delivered concurrently exactly once', async ({ request }) => {
+    const body = email()
+
+    const responses = await Promise.all(Array.from({ length: 5 }, () => postEmail(request, body)))
+    const results = await Promise.all(responses.map(async (res) => ({ status: res.status(), json: await res.json() })))
+
+    // Exactly one delivery creates the ticket; the rest are acknowledged as duplicates of it
+    const created = results.filter((r) => r.status === 201)
+    expect(created, JSON.stringify(results)).toHaveLength(1)
+    const ticketId = created[0].json.ticketId
+    expect(created[0].json).toEqual({ ticketId, created: true })
+    for (const r of results.filter((r) => r.status !== 201)) {
+      expect(r.status, JSON.stringify(r)).toBe(200)
+      expect(r.json).toEqual({ ticketId, created: false, duplicate: true })
+    }
+    expect(readTicket(ticketId)!.messages).toHaveLength(1)
+  })
+
+  test('appends a reply delivered concurrently exactly once', async ({ request }) => {
+    const original = email()
+    const ticketId = await createTicket(request, original)
+    const reply = email({ from: original.from, inReplyTo: original.messageId })
+
+    const responses = await Promise.all(Array.from({ length: 5 }, () => postEmail(request, reply)))
+    const results = await Promise.all(responses.map(async (res) => ({ status: res.status(), json: await res.json() })))
+
+    for (const r of results) expect(r.status, JSON.stringify(r)).toBe(200)
+    const appended = results.filter((r) => !r.json.duplicate)
+    expect(appended, JSON.stringify(results)).toHaveLength(1)
+    expect(appended[0].json).toEqual({ ticketId, created: false })
+    for (const r of results.filter((r) => r.json.duplicate)) {
+      expect(r.json).toEqual({ ticketId, created: false, duplicate: true })
+    }
+    expect(readTicket(ticketId)!.messages.map((m) => m.messageId)).toEqual([original.messageId, reply.messageId])
+  })
 })
 
 test.describe('Inbound email: replies', () => {
@@ -298,6 +423,62 @@ test.describe('Inbound email: replies', () => {
     expect(res.status()).toBe(200)
     expect(await res.json()).toEqual({ ticketId, created: false })
     expect(readTicket(ticketId)!.messages).toHaveLength(2)
+  })
+
+  test('joins the ticket of the most recently stored match, not the latest sender-supplied receivedAt', async ({ request }) => {
+    // receivedAt comes from the payload, so a sender's clock must not decide which ticket a reply joins
+    const futureDated = email({ receivedAt: '2099-01-01T00:00:00.000Z' })
+    const ticketA = await createTicket(request, futureDated)
+    const pastDated = email({ receivedAt: '2000-01-01T00:00:00.000Z' })
+    const ticketB = await createTicket(request, pastDated)
+
+    const res = await postEmail(
+      request,
+      email({ references: [futureDated.messageId!, pastDated.messageId!] }),
+    )
+
+    expect(res.status()).toBe(200)
+    expect(await res.json()).toEqual({ ticketId: ticketB, created: false })
+    const b = readTicket(ticketB)!
+    expect(b.messages).toHaveLength(2)
+    expect(b.messages[0].receivedAt).toBe('2000-01-01T00:00:00.000Z')
+    const a = readTicket(ticketA)!
+    expect(a.messages).toHaveLength(1)
+    // A holds the newer receivedAt, so ordering by receivedAt would have picked it
+    expect(a.messages[0].receivedAt).toBe('2099-01-01T00:00:00.000Z')
+  })
+
+  test('keeps the ticket subject and customer when someone else replies', async ({ request }) => {
+    const original = email()
+    const ticketId = await createTicket(request, original)
+    const colleague = { email: uniqueEmail('colleague'), name: 'Colin Colleague' }
+
+    await postEmail(
+      request,
+      email({ from: colleague, subject: 'Re: something else entirely', inReplyTo: original.messageId }),
+    )
+
+    const ticket = readTicket(ticketId)!
+    expect(ticket).toMatchObject({
+      subject: original.subject,
+      fromEmail: original.from.email,
+      fromName: original.from.name,
+    })
+    // The reply itself is stored under its own sender
+    expect(ticket.messages[1]).toMatchObject({ fromEmail: colleague.email, fromName: colleague.name })
+  })
+
+  test('appends a reply that has no messageId of its own', async ({ request }) => {
+    const original = email()
+    const ticketId = await createTicket(request, original)
+
+    const res = await postEmail(request, email({ from: original.from, messageId: undefined, inReplyTo: original.messageId }))
+
+    expect(res.status()).toBe(200)
+    expect(await res.json()).toEqual({ ticketId, created: false })
+    const ticket = readTicket(ticketId)!
+    expect(ticket.messages).toHaveLength(2)
+    expect(ticket.messages[1].messageId).toBeNull()
   })
 
   test('threads a reply to a reply onto the same ticket', async ({ request }) => {

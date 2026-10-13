@@ -6,6 +6,7 @@ import { prisma } from "./db.ts";
 import { requireAuth, type AuthLocals } from "./middleware/requireAuth.ts";
 import { requireInboundSecret } from "./middleware/requireInboundSecret.ts";
 import { inboundEmailRouter } from "./routes/inbound-email.ts";
+import { ticketsRouter } from "./routes/tickets.ts";
 import { usersRouter } from "./routes/users.ts";
 
 export const app = express();
@@ -61,6 +62,7 @@ app.get("/api/me", requireAuth, (_req, res: Response<unknown, AuthLocals>) => {
 });
 
 app.use("/api/users", usersRouter);
+app.use("/api/tickets", ticketsRouter);
 
 // 404 for unknown API routes
 app.use("/api", (req, res) => {

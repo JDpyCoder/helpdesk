@@ -1,5 +1,5 @@
 import { prisma } from "./db.ts";
-import { TicketStatus } from "./generated/prisma/enums.ts";
+import { TicketCategory, TicketStatus } from "./generated/prisma/enums.ts";
 
 // Used only by the e2e suite (e2e/fixtures.ts → readTicket) to inspect a stored ticket,
 // since there is no ticket API to read it yet. Prints the ticket and its messages as JSON.
@@ -23,6 +23,22 @@ if (setStatus) {
     throw new Error(`E2E_TICKET_SET_STATUS must be one of ${Object.values(TicketStatus).join(", ")}`);
   }
   await prisma.ticket.update({ where: { id }, data: { status: setStatus as TicketStatus } });
+}
+
+// Optional E2E_TICKET_SET_CATEGORY (a TicketCategory) and E2E_TICKET_SET_ASSIGNEE_EMAIL (an
+// existing user's email) do the same for the AI category and the assignee.
+const setCategory = process.env.E2E_TICKET_SET_CATEGORY;
+if (setCategory) {
+  if (!(Object.values(TicketCategory) as string[]).includes(setCategory)) {
+    throw new Error(`E2E_TICKET_SET_CATEGORY must be one of ${Object.values(TicketCategory).join(", ")}`);
+  }
+  await prisma.ticket.update({ where: { id }, data: { category: setCategory as TicketCategory } });
+}
+
+const setAssigneeEmail = process.env.E2E_TICKET_SET_ASSIGNEE_EMAIL;
+if (setAssigneeEmail) {
+  const assignee = await prisma.user.findUniqueOrThrow({ where: { email: setAssigneeEmail }, select: { id: true } });
+  await prisma.ticket.update({ where: { id }, data: { assignedToId: assignee.id } });
 }
 
 const ticket = await prisma.ticket.findUnique({

@@ -41,13 +41,14 @@ inboundEmailRouter.post("/", async (req, res) => {
   };
 
   try {
-    // A reply names earlier messages in In-Reply-To / References; join the newest known one's ticket
+    // A reply names earlier messages in In-Reply-To / References; join the ticket of the one stored last.
+    // Order by our own id, not receivedAt, which the sender can set.
     const threadIds = [...new Set([inReplyTo, ...(references ?? [])].filter((id) => id !== undefined))];
     const parent =
       threadIds.length > 0
         ? await prisma.ticketMessage.findFirst({
             where: { messageId: { in: threadIds } },
-            orderBy: { receivedAt: "desc" },
+            orderBy: { id: "desc" },
             select: { ticketId: true },
           })
         : null;

@@ -95,6 +95,48 @@ export function readTicket(id: number, setStatus?: StoredTicket['status']): Stor
   return JSON.parse(out.toString('utf8')) as StoredTicket | null
 }
 
+export type TicketCategory = 'GENERAL_QUESTION' | 'TECHNICAL_QUESTION' | 'REFUND_REQUEST'
+
+// Sets fields no API can change yet (status, AI category, assignee by email) directly in
+// the test database, via the same script as readTicket, and returns the updated ticket.
+export function setTicketFields(
+  id: number,
+  fields: { status?: StoredTicket['status']; category?: TicketCategory; assigneeEmail?: string },
+): StoredTicket {
+  const out = execFileSync('bun', ['src/read-test-ticket.ts'], {
+    cwd: 'server',
+    env: {
+      ...process.env,
+      E2E_TICKET_ID: String(id),
+      ...(fields.status && { E2E_TICKET_SET_STATUS: fields.status }),
+      ...(fields.category && { E2E_TICKET_SET_CATEGORY: fields.category }),
+      ...(fields.assigneeEmail && { E2E_TICKET_SET_ASSIGNEE_EMAIL: fields.assigneeEmail }),
+    },
+    stdio: 'pipe',
+  })
+  const ticket = JSON.parse(out.toString('utf8')) as StoredTicket | null
+  if (!ticket) throw new Error(`Ticket ${id} does not exist`)
+  return ticket
+}
+
+// Delivers an email through the inbound webhook as a brand-new ticket and returns its id
+export async function createTicketViaEmail(
+  request: APIRequestContext,
+  email: { subject: string; fromEmail?: string; fromName?: string; text?: string },
+): Promise<number> {
+  const res = await request.post('/api/inbound-email', {
+    data: {
+      from: { email: email.fromEmail ?? uniqueEmail('customer'), name: email.fromName ?? 'Casey Customer' },
+      subject: email.subject,
+      text: email.text ?? 'Hello, I need some help please.',
+      messageId: uniqueMessageId(),
+    },
+    headers: inboundEmailHeaders(),
+  })
+  expect(res.status(), await res.text()).toBe(201)
+  return (await res.json()).ticketId as number
+}
+
 // Signs in through the login form and waits until the app shows the signed-in layout
 export async function signIn(page: Page, user: Credentials) {
   await page.goto('/login')

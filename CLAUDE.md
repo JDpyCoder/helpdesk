@@ -80,6 +80,7 @@ There is no email provider yet. Support mail enters through a provider-agnostic 
   - A reply whose `inReplyTo`/`references` match a stored `TicketMessage.messageId` is appended to that ticket and sets it back to `OPEN` → 200 `{ ticketId, created: false }`.
   - Anything else creates a `Ticket` with its first `TicketMessage` → 201 `{ ticketId, created: true }`.
 - **Models** — `Ticket` (auto-increment `Int` id, required `fromName`, `TicketStatus` OPEN/RESOLVED/CLOSED, optional `TicketCategory?` with no default — set later by AI classification, `assignedTo` → `User`) and `TicketMessage` (body plus email headers) in `schema.prisma`. On the server, use the generated enums (`TicketStatus.OPEN`), as with `Role`. `core/src/schemas/tickets.ts` mirrors them the same way `Role` is mirrored: `ticketStatusSchema`/`ticketCategorySchema` (`z.enum([...])`), plus `TicketStatus`/`TicketCategory` as both values and types. The client imports those from `"core"`. Keep them in step with `schema.prisma` when an enum changes. The inferred types are the same string unions Prisma uses, so a value that one side doesn't have fails the typecheck where it's passed across. It also has `listTicketsQuerySchema` (status/category filters, `sortBy`, `order`) and `updateTicketSchema` (`status`, `category`, `assignedToId`; null clears; at least one field required) for the Phase 4 ticket endpoints.
+- **Ticket list** — `GET /api/tickets` (`server/src/routes/tickets.ts`, `requireAuth` — agents and admins) validates the query with `listTicketsQuerySchema` and returns `{ tickets }` with list columns only (no message bodies), sorted newest first by default with `id` as tie-breaker. The client page is `/tickets` (`TicketsPage` → `TicketsTable`, linked from the `NavBar` for every signed-in user); it shows tickets in the order the server returns them.
 - **Env** — `INBOUND_EMAIL_SECRET` in `server/.env` and `server/.env.test` (generate with `openssl rand -base64 32`).
 
 ## Component tests
@@ -92,9 +93,9 @@ Vitest + React Testing Library in jsdom, for the client only. Config is the `tes
 - One file or test: `bunx vitest run src/pages/UsersPage.test.tsx` or add `-t "<test name>"`.
 - `bun run typecheck` also typechecks the test files (`tsc -b` includes `src/`).
 
-**What goes where**
-- Component tests: one component's rendering and states in isolation — loading, empty, error, data, conditional UI, form validation. The API is mocked.
-- E2E (Playwright, `e2e/`): real flows across the browser, server and database — auth, role checks, navigation, retries. Don't duplicate E2E coverage in component tests or vice versa.
+**What goes where — default to component tests**
+- Component tests are the main test layer. Every new or changed client component gets them: rendering and states (loading, empty, error, data), conditional UI, form validation, what is sent to the API and how its responses and errors are shown. The API is mocked. They're fast, so cover cases thoroughly here.
+- E2E (Playwright, `e2e/`) only when a component test can't catch the risk, because it depends on the real browser, server and database working together: sign-in/sign-out and session handling, server-side role checks and access control, critical end-to-end journeys (e.g. an email becoming a ticket an agent can see), and server behaviour such as validation, persistence or ordering that no component test can see. Keep it to a few tests per feature, not exhaustive matrices. Don't duplicate component-test coverage in E2E or vice versa.
 
 **Writing a test**
 - Put the spec next to the component as `<Component>.test.tsx`. Only `src/**/*.test.{ts,tsx}` is picked up.
@@ -116,7 +117,7 @@ Vitest + React Testing Library in jsdom, for the client only. Config is the `tes
 Playwright (Chromium) with `playwright.config.ts` at the root and specs in `e2e/`. The `e2e-tester` agent (`.claude/agents/e2e-tester.md`) owns this suite, and its instructions document how the test stack works.
 
 - **Delegate E2E work** — write, update, run, and debug Playwright tests through the `e2e-tester` agent (Agent tool, `subagent_type: "e2e-tester"`), not in the main session. This covers new specs and helpers in `e2e/` as well as diagnosing failing tests.
-- **When to use it** — after finishing a user-facing feature or flow (e.g. a new page, form, admin action, or ticket workflow), when a change touches auth, routing, or role checks, or when the user asks for E2E coverage or a test run.
+- **When to use it** — sparingly. Don't add E2E tests by default after every feature; write component tests first (see "What goes where" above). Use the agent only when a change touches auth, sessions, or server-side role checks, when it adds a critical cross-stack journey the existing specs don't cover, when the user asks for E2E coverage or a test run, or to fix failing specs. When you do, ask for a small number of focused tests, not exhaustive coverage.
 - **What to pass it** — the agent starts with no knowledge of this conversation. Tell it what changed or what to cover: the feature and its routes, the files involved, the expected behaviour for each role, and any edge cases. Ask it to run the affected specs and report results.
 - **After it returns** — relay its summary to the user: tests added or changed, pass/fail counts, and any app bugs it found. Don't claim tests pass unless its report shows a passing run.
 

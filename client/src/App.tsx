@@ -3,6 +3,7 @@ import AdminRoute from './components/AdminRoute.tsx'
 import ProtectedLayout from './components/ProtectedLayout.tsx'
 import HomePage from './pages/HomePage.tsx'
 import LoginPage from './pages/LoginPage.tsx'
+import TicketsPage from './pages/TicketsPage.tsx'
 import UsersPage from './pages/UsersPage.tsx'
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<ProtectedLayout />}>
         <Route index element={<HomePage />} />
+        <Route path="tickets" element={<TicketsPage />} />
         <Route element={<AdminRoute />}>
           <Route path="users" element={<UsersPage />} />
         </Route>

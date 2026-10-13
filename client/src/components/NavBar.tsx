@@ -23,6 +23,9 @@ function NavBar({ userName, isAdmin }: { userName: string; isAdmin: boolean }) {
           <Link to="/" className="text-lg font-semibold">
             Helpdesk
           </Link>
+          <Link to="/tickets" className="text-sm text-muted-foreground hover:text-foreground">
+            Tickets
+          </Link>
           {isAdmin && (
             <Link to="/users" className="text-sm text-muted-foreground hover:text-foreground">
               Users
