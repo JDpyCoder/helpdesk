@@ -1,0 +1,145 @@
+import { useQuery } from '@tanstack/react-query'
+import axios from 'axios'
+import { ArrowLeft } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { Link, useParams } from 'react-router'
+import type { TicketListItem } from '@/components/TicketsTable.tsx'
+import { Badge } from '@/components/ui/badge.tsx'
+import { Button } from '@/components/ui/button.tsx'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx'
+import { Separator } from '@/components/ui/separator.tsx'
+import { Skeleton } from '@/components/ui/skeleton.tsx'
+import { errorMessage } from '@/lib/query-client.ts'
+import { categoryLabels, statusLabels, statusVariants } from '@/lib/ticket-labels.ts'
+import { ticketIdSchema } from 'core'
+
+export type TicketMessage = {
+  id: number
+  fromEmail: string
+  fromName: string
+  body: string
+  receivedAt: string
+}
+
+// GET /api/tickets/:id: the list columns plus the conversation, oldest message first
+export type TicketDetail = TicketListItem & { messages: TicketMessage[] }
+
+// /tickets/:id — one ticket's details and its email conversation
+function TicketDetailPage() {
+  const { id } = useParams()
+  // A malformed id in the URL can't match a ticket, so it isn't requested
+  const parsedId = ticketIdSchema.safeParse(id)
+  const ticketId = parsedId.success ? parsedId.data : null
+
+  const { data: ticket, error } = useQuery({
+    queryKey: ['tickets', ticketId],
+    queryFn: () => axios.get<{ ticket: TicketDetail }>(`/api/tickets/${ticketId}`).then((res) => res.data.ticket),
+    enabled: ticketId !== null,
+  })
+
+  return (
+    <div className="space-y-4">
+      <Button variant="ghost" size="sm" className="-ml-2.5" asChild>
+        <Link to="/tickets">
+          <ArrowLeft aria-hidden />
+          Back to tickets
+        </Link>
+      </Button>
+      <TicketDetailContent ticket={ticket} error={ticketId === null ? 'not-found' : error} />
+    </div>
+  )
+}
+
+type TicketDetailContentProps = {
+  ticket: TicketDetail | undefined
+  error: Parameters<typeof errorMessage>[0] | 'not-found' | null
+}
+
+function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
+  if (error === 'not-found' || error?.response?.status === 404) {
+    return <p className="text-sm text-muted-foreground">Ticket not found.</p>
+  }
+
+  if (error) {
+    return <p className="text-sm text-destructive">Could not load ticket ({errorMessage(error)}).</p>
+  }
+
+  if (!ticket) {
+    return (
+      <Card role="status" aria-label="Loading ticket">
+        <CardHeader className="space-y-2">
+          <Skeleton className="h-7 w-96 max-w-full" />
+          <Skeleton className="h-4 w-48" />
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-24 w-full" />
+        </CardContent>
+      </Card>
+    )
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl" role="heading" aria-level={1}>
+          <span className="text-muted-foreground">#{ticket.id}</span> {ticket.subject}
+        </CardTitle>
+        <CardDescription>
+          From {ticket.fromName} &lt;{ticket.fromEmail}&gt;
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6 text-sm">
+        <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
+          <DetailItem label="Status">
+            <Badge variant={statusVariants[ticket.status]}>{statusLabels[ticket.status]}</Badge>
+          </DetailItem>
+          <DetailItem label="Category">
+            {ticket.category ? (
+              categoryLabels[ticket.category]
+            ) : (
+              <span className="text-muted-foreground">Unclassified</span>
+            )}
+          </DetailItem>
+          <DetailItem label="Assigned to">
+            {ticket.assignedTo?.name ?? <span className="text-muted-foreground">Unassigned</span>}
+          </DetailItem>
+          <DetailItem label="Created">{new Date(ticket.createdAt).toLocaleString()}</DetailItem>
+        </dl>
+        <Separator />
+        <section aria-labelledby="ticket-messages-heading" className="space-y-4">
+          <h2 id="ticket-messages-heading" className="font-medium">
+            Messages ({ticket.messages.length})
+          </h2>
+          <ol className="space-y-4">
+            {ticket.messages.map((message) => (
+              <li key={message.id} aria-label={`Message from ${message.fromName}`} className="rounded-lg border p-4">
+                <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+                  <div>
+                    <span className="font-medium">{message.fromName}</span>{' '}
+                    <span className="text-muted-foreground">&lt;{message.fromEmail}&gt;</span>
+                  </div>
+                  <time dateTime={message.receivedAt} className="text-muted-foreground">
+                    {new Date(message.receivedAt).toLocaleString()}
+                  </time>
+                </div>
+                <p className="break-words whitespace-pre-wrap">{message.body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+      </CardContent>
+    </Card>
+  )
+}
+
+function DetailItem({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  )
+}
+
+export default TicketDetailPage

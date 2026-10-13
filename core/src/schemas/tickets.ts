@@ -70,3 +70,10 @@ export const updateTicketSchema = z
   });
 
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
+
+// :id in /api/tickets/:id (and the client's /tickets/:id route): a positive integer ticket id
+export const ticketIdSchema = z.coerce
+  .number({ message: "Ticket id must be a number" })
+  .int("Ticket id must be a whole number")
+  .positive("Ticket id must be positive")
+  .max(2147483647, "Ticket id is too large");

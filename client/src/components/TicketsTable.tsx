@@ -21,6 +21,7 @@ import {
   X,
 } from 'lucide-react'
 import { useState } from 'react'
+import { TextLink } from '@/components/TextLink.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Input } from '@/components/ui/input.tsx'
@@ -36,17 +37,16 @@ import {
   TableRow,
 } from '@/components/ui/table.tsx'
 import { errorMessage } from '@/lib/query-client.ts'
+import { categoryLabels, statusLabels, statusVariants } from '@/lib/ticket-labels.ts'
 import { useDebouncedValue } from '@/lib/use-debounced-value.ts'
 import {
   DEFAULT_TICKET_PAGE_SIZE,
   TICKET_PAGE_SIZES,
-  TicketCategory,
-  TicketStatus,
   ticketCategorySchema,
   ticketStatusSchema,
   UNCLASSIFIED,
 } from 'core'
-import type { SortOrder, TicketCategoryFilter, TicketSortField } from 'core'
+import type { SortOrder, TicketCategory, TicketCategoryFilter, TicketSortField, TicketStatus } from 'core'
 
 export type TicketListItem = {
   id: number
@@ -66,24 +66,6 @@ type TicketListResponse = {
   total: number
   page: number
   pageSize: number
-}
-
-const statusLabels: Record<TicketStatus, string> = {
-  [TicketStatus.OPEN]: 'Open',
-  [TicketStatus.RESOLVED]: 'Resolved',
-  [TicketStatus.CLOSED]: 'Closed',
-}
-
-const statusVariants: Record<TicketStatus, 'default' | 'secondary' | 'outline'> = {
-  [TicketStatus.OPEN]: 'default',
-  [TicketStatus.RESOLVED]: 'secondary',
-  [TicketStatus.CLOSED]: 'outline',
-}
-
-const categoryLabels: Record<TicketCategory, string> = {
-  [TicketCategory.GENERAL_QUESTION]: 'General question',
-  [TicketCategory.TECHNICAL_QUESTION]: 'Technical question',
-  [TicketCategory.REFUND_REQUEST]: 'Refund request',
 }
 
 const features = tableFeatures({
@@ -110,7 +92,11 @@ const columns: (ColumnDef<typeof features, TicketListItem> & { id: TicketSortFie
     accessorKey: 'subject',
     header: 'Subject',
     sortDescFirst: false,
-    cell: ({ row }) => <div className="max-w-80 truncate font-medium">{row.original.subject}</div>,
+    cell: ({ row }) => (
+      <TextLink to={`/tickets/${row.original.id}`} className="block max-w-80 truncate font-medium">
+        {row.original.subject}
+      </TextLink>
+    ),
   },
   {
     id: 'fromName',

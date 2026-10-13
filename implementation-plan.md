@@ -28,10 +28,10 @@
 
 - [x] Implement create ticket API endpoint
 - [x] Implement list tickets API endpoint (with filtering by status and category, sorting)
-- [ ] Implement get ticket API endpoint
+- [x] Implement get ticket API endpoint
 - [ ] Implement update ticket API endpoint (change status, assign agent)
 - [x] Create ticket list page with filtering and sorting
-- [ ] Create ticket detail page
+- [x] Create ticket detail page
 
 ## Phase 5: AI Features
 

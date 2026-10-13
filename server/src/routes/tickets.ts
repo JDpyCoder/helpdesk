@@ -1,4 +1,4 @@
-import { listTicketsQuerySchema, UNCLASSIFIED } from "core";
+import { listTicketsQuerySchema, ticketIdSchema, UNCLASSIFIED } from "core";
 import { Router } from "express";
 import { prisma } from "../db.ts";
 import type { Prisma } from "../generated/prisma/client.ts";
@@ -69,4 +69,29 @@ ticketsRouter.get("/", async (req, res) => {
     prisma.ticket.count({ where }),
   ]);
   res.json({ tickets, total, page, pageSize });
+});
+
+// One ticket with its whole conversation, oldest message first
+ticketsRouter.get("/:id", async (req, res) => {
+  const parsed = ticketIdSchema.safeParse(req.params.id);
+  if (!parsed.success) {
+    sendValidationError(res, parsed.error);
+    return;
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: parsed.data },
+    select: {
+      ...ticketListSelect,
+      messages: {
+        select: { id: true, fromEmail: true, fromName: true, body: true, receivedAt: true },
+        orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+      },
+    },
+  });
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+  res.json({ ticket });
 });

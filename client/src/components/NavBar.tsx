@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { TextLink } from '@/components/TextLink.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { authClient } from '@/lib/auth-client.ts'
 import { queryClient } from '@/lib/query-client.ts'
@@ -23,13 +24,13 @@ function NavBar({ userName, isAdmin }: { userName: string; isAdmin: boolean }) {
           <Link to="/" className="text-lg font-semibold">
             Helpdesk
           </Link>
-          <Link to="/tickets" className="text-sm text-muted-foreground hover:text-foreground">
+          <TextLink to="/tickets" variant="nav">
             Tickets
-          </Link>
+          </TextLink>
           {isAdmin && (
-            <Link to="/users" className="text-sm text-muted-foreground hover:text-foreground">
+            <TextLink to="/users" variant="nav">
               Users
-            </Link>
+            </TextLink>
           )}
         </div>
         <div className="flex items-center gap-4">

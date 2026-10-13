@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import axios from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { MemoryRouter } from 'react-router'
 import { renderWithQuery } from '@/test/render.tsx'
 import TicketsPage from './TicketsPage.tsx'
 
@@ -46,6 +47,15 @@ function makeTickets(n: number) {
   return Array.from({ length: n }, (_, i) => ({ ...tickets[1], id: n - i, subject: `Ticket ${n - i}` }))
 }
 
+// Subjects link to the detail page, so the table needs a router
+function renderPage() {
+  return renderWithQuery(
+    <MemoryRouter>
+      <TicketsPage />
+    </MemoryRouter>
+  )
+}
+
 function httpError(status?: number, message = 'Request failed') {
   return Object.assign(new Error(message), status ? { response: { status } } : {})
 }
@@ -57,14 +67,14 @@ afterEach(() => {
 describe('TicketsPage', () => {
   it('shows the page heading', () => {
     mockGet.mockReturnValue(new Promise(() => {}))
-    renderWithQuery(<TicketsPage />)
+    renderPage()
 
     expect(screen.getByRole('heading', { level: 1, name: 'Tickets' })).toBeInTheDocument()
   })
 
   it('shows a loading skeleton while tickets are being fetched', () => {
     mockGet.mockReturnValue(new Promise(() => {}))
-    renderWithQuery(<TicketsPage />)
+    renderPage()
 
     expect(screen.getByRole('status', { name: 'Loading tickets' })).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -72,7 +82,7 @@ describe('TicketsPage', () => {
 
   it('requests the ticket list from the API', async () => {
     mockGet.mockResolvedValue(listResponse(tickets))
-    renderWithQuery(<TicketsPage />)
+    renderPage()
 
     await screen.findByRole('table')
     expect(mockGet).toHaveBeenCalledTimes(1)
@@ -81,7 +91,7 @@ describe('TicketsPage', () => {
 
   it('renders a row per ticket in the order the API returns them', async () => {
     mockGet.mockResolvedValue(listResponse(tickets))
-    renderWithQuery(<TicketsPage />)
+    renderPage()
 
     const table = await screen.findByRole('table')
     expect(screen.queryByRole('status', { name: 'Loading tickets' })).not.toBeInTheDocument()
@@ -110,6 +120,14 @@ describe('TicketsPage', () => {
     ])
   })
 
+  it('links each subject to its ticket detail page', async () => {
+    mockGet.mockResolvedValue(listResponse(tickets))
+    renderPage()
+
+    expect(await screen.findByRole('link', { name: 'Refund for my course' })).toHaveAttribute('href', '/tickets/2')
+    expect(screen.getByRole('link', { name: 'Cannot log in' })).toHaveAttribute('href', '/tickets/1')
+  })
+
   describe('sorting', () => {
     function header(name: string) {
       return screen.getByRole('columnheader', { name })
@@ -121,7 +139,7 @@ describe('TicketsPage', () => {
 
     it('marks the Created column as sorted descending by default', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
 
       await screen.findByRole('table')
       expect(header('Created')).toHaveAttribute('aria-sort', 'descending')
@@ -132,7 +150,7 @@ describe('TicketsPage', () => {
 
     it('sorts by subject ascending, then descending, on repeated clicks', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(sortButton('Subject'))
@@ -151,7 +169,7 @@ describe('TicketsPage', () => {
 
     it('toggles Created to ascending, never back to unsorted', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(sortButton('Created'))
@@ -166,7 +184,7 @@ describe('TicketsPage', () => {
 
     it('sends the column id as sortBy for the From and Assigned to columns', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(sortButton('Assigned to'))
@@ -182,7 +200,7 @@ describe('TicketsPage', () => {
 
     it('starts the # column descending', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(sortButton('#'))
@@ -193,7 +211,7 @@ describe('TicketsPage', () => {
 
     it('keeps showing the current rows while the re-sorted list loads', async () => {
       mockGet.mockResolvedValueOnce(listResponse(tickets)).mockReturnValue(new Promise(() => {}))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(sortButton('Subject'))
@@ -208,7 +226,7 @@ describe('TicketsPage', () => {
       mockGet
         .mockResolvedValueOnce(listResponse(tickets))
         .mockResolvedValueOnce(listResponse([...tickets].reverse()))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       const table = await screen.findByRole('table')
 
       fireEvent.click(sortButton('Subject'))
@@ -228,7 +246,7 @@ describe('TicketsPage', () => {
 
     it('shows Status and Category filters set to All by default', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       const status = screen.getByRole('combobox', { name: 'Status' })
@@ -246,7 +264,7 @@ describe('TicketsPage', () => {
 
     it('requests tickets with the selected status', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'RESOLVED' } })
@@ -257,7 +275,7 @@ describe('TicketsPage', () => {
 
     it('requests unclassified tickets with category=none', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.change(screen.getByRole('combobox', { name: 'Category' }), { target: { value: 'none' } })
@@ -267,7 +285,7 @@ describe('TicketsPage', () => {
 
     it('combines both filters with the current sort', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(within(screen.getByRole('columnheader', { name: 'Subject' })).getByRole('button'))
@@ -281,7 +299,7 @@ describe('TicketsPage', () => {
 
     it('drops a filter when its All option is chosen again', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
       const status = screen.getByRole('combobox', { name: 'Status' })
 
@@ -294,7 +312,7 @@ describe('TicketsPage', () => {
 
     it('clears all filters with the Clear filters button', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'OPEN' } })
@@ -309,7 +327,7 @@ describe('TicketsPage', () => {
 
     it('shows a no-matches message and keeps the filters when nothing matches', async () => {
       mockGet.mockResolvedValueOnce(listResponse(tickets)).mockResolvedValue(listResponse([]))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'CLOSED' } })
@@ -322,7 +340,7 @@ describe('TicketsPage', () => {
 
     it('keeps the current rows, marked busy, while the filtered list loads', async () => {
       mockGet.mockResolvedValueOnce(listResponse(tickets)).mockReturnValue(new Promise(() => {}))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'OPEN' } })
@@ -344,7 +362,7 @@ describe('TicketsPage', () => {
 
     it('shows an empty search box', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       expect(searchBox()).toHaveValue('')
@@ -353,7 +371,7 @@ describe('TicketsPage', () => {
 
     it('sends the search once typing pauses, not on every keystroke', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       for (const value of ['r', 're', 'ref', 'refund']) fireEvent.change(searchBox(), { target: { value } })
@@ -365,7 +383,7 @@ describe('TicketsPage', () => {
 
     it('trims the search and leaves a blank one out of the request', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.change(searchBox(), { target: { value: '  casey  ' } })
@@ -377,7 +395,7 @@ describe('TicketsPage', () => {
 
     it('combines the search with filters and sorting', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(within(screen.getByRole('columnheader', { name: 'Subject' })).getByRole('button'))
@@ -391,7 +409,7 @@ describe('TicketsPage', () => {
 
     it('shows Clear filters while searching, and clearing empties the search box', async () => {
       mockGet.mockResolvedValue(listResponse(tickets))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.change(searchBox(), { target: { value: 'login' } })
@@ -405,7 +423,7 @@ describe('TicketsPage', () => {
 
     it('shows the no-matches message when the search finds nothing', async () => {
       mockGet.mockResolvedValueOnce(listResponse(tickets)).mockResolvedValue(listResponse([]))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.change(searchBox(), { target: { value: 'no such ticket' } })
@@ -430,7 +448,7 @@ describe('TicketsPage', () => {
 
     it('shows the range, page count and page size, with back buttons disabled on page 1', async () => {
       mockGet.mockResolvedValue(listResponse(makeTickets(10), 101))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       expect(within(pagination()).getByText('Showing 1–10 of 101 tickets')).toBeInTheDocument()
@@ -446,7 +464,7 @@ describe('TicketsPage', () => {
 
     it('requests the next, last, previous and first pages', async () => {
       mockGet.mockResolvedValue(listResponse(makeTickets(10), 101))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(button('Next page'))
@@ -469,7 +487,7 @@ describe('TicketsPage', () => {
 
     it('changes the page size and keeps the first visible ticket on screen', async () => {
       mockGet.mockResolvedValue(listResponse(makeTickets(10), 101))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       // Page 6 of 10-per-page starts at ticket 51, which is on page 2 of 50-per-page
@@ -485,7 +503,7 @@ describe('TicketsPage', () => {
 
     it('goes back to page 1 when the sort, a filter or the search changes', async () => {
       mockGet.mockResolvedValue(listResponse(makeTickets(10), 101))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(button('Next page'))
@@ -516,7 +534,7 @@ describe('TicketsPage', () => {
         if (page === 3) return listResponse([], 15, 3)
         return listResponse(makeTickets(page === 2 ? 5 : 10), page === 1 ? 101 : 15, page)
       })
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       fireEvent.click(button('Next page'))
@@ -529,7 +547,7 @@ describe('TicketsPage', () => {
 
     it('says "ticket" for a single result and hides pagination when there are none', async () => {
       mockGet.mockResolvedValueOnce(listResponse([tickets[0]])).mockResolvedValue(listResponse([]))
-      renderWithQuery(<TicketsPage />)
+      renderPage()
       await screen.findByRole('table')
 
       expect(within(pagination()).getByText('Showing 1–1 of 1 ticket')).toBeInTheDocument()
@@ -542,7 +560,7 @@ describe('TicketsPage', () => {
 
   it('shows an empty state when there are no tickets', async () => {
     mockGet.mockResolvedValue(listResponse([]))
-    renderWithQuery(<TicketsPage />)
+    renderPage()
 
     expect(await screen.findByText('No tickets yet.')).toBeInTheDocument()
     expect(screen.queryByRole('table')).not.toBeInTheDocument()
@@ -550,7 +568,7 @@ describe('TicketsPage', () => {
 
   it('shows the HTTP status when loading fails', async () => {
     mockGet.mockRejectedValue(httpError(500))
-    renderWithQuery(<TicketsPage />)
+    renderPage()
 
     expect(await screen.findByText('Could not load tickets (HTTP 500).')).toBeInTheDocument()
   })
