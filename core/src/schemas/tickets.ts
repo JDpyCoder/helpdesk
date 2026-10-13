@@ -32,7 +32,11 @@ export const UNCLASSIFIED = "none";
 export const ticketCategoryFilterSchema = z.union([ticketCategorySchema, z.literal(UNCLASSIFIED)]);
 export type TicketCategoryFilter = z.infer<typeof ticketCategoryFilterSchema>;
 
-// GET /api/tickets query string: optional filters plus sorting (newest first by default)
+// Page sizes the ticket list offers; the API rejects any other
+export const TICKET_PAGE_SIZES = [10, 25, 50, 100] as const;
+export const DEFAULT_TICKET_PAGE_SIZE = 10;
+
+// GET /api/tickets query string: optional filters, sorting (newest first by default) and pagination
 export const listTicketsQuerySchema = z.object({
   status: ticketStatusSchema.optional(),
   category: ticketCategoryFilterSchema.optional(),
@@ -41,6 +45,15 @@ export const listTicketsQuerySchema = z.object({
   search: z.string().trim().max(200, "Search must be at most 200 characters").optional(),
   sortBy: ticketSortFieldSchema.default("createdAt"),
   order: sortOrderSchema.default("desc"),
+  // 1-based; a page past the end returns no tickets (with the real total)
+  page: z.coerce.number().int().min(1, "Page must be at least 1").default(1),
+  pageSize: z.coerce
+    .number()
+    .int()
+    .refine((size) => (TICKET_PAGE_SIZES as readonly number[]).includes(size), {
+      message: `Page size must be one of ${TICKET_PAGE_SIZES.join(", ")}`,
+    })
+    .default(DEFAULT_TICKET_PAGE_SIZE),
 });
 
 export type ListTicketsQuery = z.infer<typeof listTicketsQuerySchema>;

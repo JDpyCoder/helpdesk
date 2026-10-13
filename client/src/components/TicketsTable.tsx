@@ -2,13 +2,24 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import {
   columnFilteringFeature,
   globalFilteringFeature,
+  rowPaginationFeature,
   rowSortingFeature,
   tableFeatures,
   useTable,
 } from '@tanstack/react-table'
-import type { ColumnDef, ColumnFiltersState, SortingState } from '@tanstack/react-table'
+import type { ColumnDef, ColumnFiltersState, PaginationState, SortingState } from '@tanstack/react-table'
 import axios from 'axios'
-import { ArrowDown, ArrowUp, ArrowUpDown, SearchIcon, X } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  SearchIcon,
+  X,
+} from 'lucide-react'
 import { useState } from 'react'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
@@ -26,7 +37,15 @@ import {
 } from '@/components/ui/table.tsx'
 import { errorMessage } from '@/lib/query-client.ts'
 import { useDebouncedValue } from '@/lib/use-debounced-value.ts'
-import { TicketCategory, TicketStatus, ticketCategorySchema, ticketStatusSchema, UNCLASSIFIED } from 'core'
+import {
+  DEFAULT_TICKET_PAGE_SIZE,
+  TICKET_PAGE_SIZES,
+  TicketCategory,
+  TicketStatus,
+  ticketCategorySchema,
+  ticketStatusSchema,
+  UNCLASSIFIED,
+} from 'core'
 import type { SortOrder, TicketCategoryFilter, TicketSortField } from 'core'
 
 export type TicketListItem = {
@@ -39,6 +58,14 @@ export type TicketListItem = {
   assignedTo: { id: string; name: string } | null
   createdAt: string
   updatedAt: string
+}
+
+// GET /api/tickets: one page of tickets plus the number of tickets matching the filters
+type TicketListResponse = {
+  tickets: TicketListItem[]
+  total: number
+  page: number
+  pageSize: number
 }
 
 const statusLabels: Record<TicketStatus, string> = {
@@ -59,7 +86,14 @@ const categoryLabels: Record<TicketCategory, string> = {
   [TicketCategory.REFUND_REQUEST]: 'Refund request',
 }
 
-const features = tableFeatures({ rowSortingFeature, columnFilteringFeature, globalFilteringFeature })
+const features = tableFeatures({
+  rowSortingFeature,
+  columnFilteringFeature,
+  globalFilteringFeature,
+  rowPaginationFeature,
+})
+
+type TicketTable = ReturnType<typeof useTable<typeof features, TicketListItem>>
 
 // Column ids are the API's sortBy values, so the table's sorting state is sent as-is.
 // sortDescFirst is set on every column: with manual sorting there is no data to infer it from.
@@ -131,7 +165,7 @@ const columns: (ColumnDef<typeof features, TicketListItem> & { id: TicketSortFie
     header: 'Created',
     sortDescFirst: true,
     cell: ({ row }) => (
-      <span className="whitespace-nowrap">{new Date(row.original.createdAt).toLocaleString()}</span>
+      <span className="whitespace-nowrap">{new Date(row.original.createdAt).toLocaleDateString()}</span>
     ),
   },
 ]
@@ -154,33 +188,71 @@ function TicketsTable() {
   const order: SortOrder = sorting[0].desc ? 'desc' : 'asc'
   const status = columnFilters.find((f) => f.id === 'status')?.value as TicketStatus | undefined
   const category = columnFilters.find((f) => f.id === 'category')?.value as TicketCategoryFilter | undefined
-  // Unset filters and a blank search are left out of the query string
-  const params = { sortBy, order, ...(status && { status }), ...(category && { category }), ...(search && { search }) }
+  const [pagination, setPagination] = useState<PaginationState>({
+    pageIndex: 0,
+    pageSize: DEFAULT_TICKET_PAGE_SIZE,
+  })
+  const resetPage = () => setPagination((old) => ({ ...old, pageIndex: 0 }))
 
-  const { data: tickets, error, isPlaceholderData } = useQuery({
+  // A new search starts from page 1. Reset when the debounced search changes (not on every keystroke),
+  // so the old search isn't refetched for page 1 first.
+  const [pagedSearch, setPagedSearch] = useState(search)
+  if (pagedSearch !== search) {
+    setPagedSearch(search)
+    resetPage()
+  }
+
+  // Unset filters and a blank search are left out of the query string; page is 1-based on the API
+  const params = {
+    sortBy,
+    order,
+    ...(status && { status }),
+    ...(category && { category }),
+    ...(search && { search }),
+    page: pagination.pageIndex + 1,
+    pageSize: pagination.pageSize,
+  }
+
+  const { data, error, isPlaceholderData } = useQuery({
     queryKey: ['tickets', params],
-    queryFn: () =>
-      axios.get<{ tickets: TicketListItem[] }>('/api/tickets', { params }).then((res) => res.data.tickets),
-    // Keep showing the current rows while a re-sorted or re-filtered list loads
+    queryFn: () => axios.get<TicketListResponse>('/api/tickets', { params }).then((res) => res.data),
+    // Keep showing the current rows while another page, sort or filter loads
     placeholderData: keepPreviousData,
   })
+
+  // A page past the end (e.g. tickets closed elsewhere shrank the list) moves to the last page
+  const pageCount = data ? Math.max(1, Math.ceil(data.total / pagination.pageSize)) : 1
+  if (data && !isPlaceholderData && pagination.pageIndex >= pageCount) {
+    setPagination((old) => ({ ...old, pageIndex: pageCount - 1 }))
+  }
 
   const table = useTable({
     features,
     columns,
-    data: tickets ?? [],
+    data: data?.tickets ?? [],
     getRowId: (ticket) => String(ticket.id),
     manualSorting: true,
     enableSortingRemoval: false,
     enableMultiSort: false,
     manualFiltering: true,
-    state: { sorting, columnFilters, globalFilter },
-    onSortingChange: setSorting,
-    onColumnFiltersChange: setColumnFilters,
+    manualPagination: true,
+    rowCount: data?.total ?? 0,
+    state: { sorting, columnFilters, globalFilter, pagination },
+    // A new sort or filter starts from page 1
+    onSortingChange: (updater) => {
+      setSorting(updater)
+      resetPage()
+    },
+    onColumnFiltersChange: (updater) => {
+      setColumnFilters(updater)
+      resetPage()
+    },
     // resetGlobalFilter(true) passes undefined; the search box needs a string
     onGlobalFilterChange: (updater) =>
       setGlobalFilter((old) => (typeof updater === 'function' ? updater(old) : updater) ?? ''),
+    onPaginationChange: setPagination,
   })
+  const tickets = data?.tickets
 
   return (
     <div className="space-y-4">
@@ -204,7 +276,88 @@ function TicketsTable() {
         isFiltered={columnFilters.length > 0 || search !== ''}
         isUpdating={isPlaceholderData}
       />
+      {data && data.total > 0 && <TicketsPagination table={table} total={data.total} pagination={pagination} />}
     </div>
+  )
+}
+
+type TicketsPaginationProps = {
+  table: TicketTable
+  total: number
+  pagination: PaginationState
+}
+
+// "Showing 26–50 of 101", a page-size select and first/previous/next/last buttons
+function TicketsPagination({ table, total, pagination }: TicketsPaginationProps) {
+  const { pageIndex, pageSize } = pagination
+  const first = pageIndex * pageSize + 1
+  const last = Math.min(total, (pageIndex + 1) * pageSize)
+
+  return (
+    <nav aria-label="Pagination" className="flex flex-wrap items-center justify-between gap-3">
+      <p className="text-muted-foreground">
+        Showing {first}–{last} of {total} {total === 1 ? 'ticket' : 'tickets'}
+      </p>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Label htmlFor="ticket-page-size">Rows per page</Label>
+          <NativeSelect
+            id="ticket-page-size"
+            size="sm"
+            value={pageSize}
+            // setPageSize keeps the first visible row on screen by adjusting the page
+            onChange={(e) => table.setPageSize(Number(e.target.value))}
+          >
+            {TICKET_PAGE_SIZES.map((size) => (
+              <NativeSelectOption key={size} value={size}>
+                {size}
+              </NativeSelectOption>
+            ))}
+          </NativeSelect>
+        </div>
+        <span>
+          Page {pageIndex + 1} of {table.getPageCount()}
+        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="First page"
+            onClick={() => table.firstPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronsLeft aria-hidden />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Previous page"
+            onClick={() => table.previousPage()}
+            disabled={!table.getCanPreviousPage()}
+          >
+            <ChevronLeft aria-hidden />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Next page"
+            onClick={() => table.nextPage()}
+            disabled={!table.getCanNextPage()}
+          >
+            <ChevronRight aria-hidden />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon-sm"
+            aria-label="Last page"
+            onClick={() => table.lastPage()}
+            disabled={!table.getCanLastPage()}
+          >
+            <ChevronsRight aria-hidden />
+          </Button>
+        </div>
+      </div>
+    </nav>
   )
 }
 
@@ -289,7 +442,7 @@ function TicketFilters({
 }
 
 type TicketsTableContentProps = {
-  table: ReturnType<typeof useTable<typeof features, TicketListItem>>
+  table: TicketTable
   tickets: TicketListItem[] | undefined
   error: Parameters<typeof errorMessage>[0] | null
   isFiltered: boolean

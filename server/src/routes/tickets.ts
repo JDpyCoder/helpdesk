@@ -37,28 +37,36 @@ function searchWhere(search: string): Prisma.TicketWhereInput {
   };
 }
 
-// Newest first by default; ?status=, ?category= (or "none" for unclassified), ?search=, ?sortBy= and ?order= are optional
+// Newest first by default; ?status=, ?category= (or "none" for unclassified), ?search=, ?sortBy=, ?order=,
+// ?page= and ?pageSize= are optional. Returns one page plus `total`, the count of matching tickets.
 ticketsRouter.get("/", async (req, res) => {
   const parsed = listTicketsQuerySchema.safeParse(req.query);
   if (!parsed.success) {
     sendValidationError(res, parsed.error);
     return;
   }
-  const { status, category, search, sortBy, order } = parsed.data;
+  const { status, category, search, sortBy, order, page, pageSize } = parsed.data;
 
+  const where: Prisma.TicketWhereInput = {
+    status,
+    category: category === UNCLASSIFIED ? null : category,
+    ...(search && searchWhere(search)),
+  };
   // assignedTo sorts by the assignee's name. Enums (status, category) sort in their schema.prisma
   // declaration order, and nulls (unassigned, unclassified) follow Postgres: last asc, first desc.
   const primary = sortBy === "assignedTo" ? { assignedTo: { name: order } } : { [sortBy]: order };
 
-  const tickets = await prisma.ticket.findMany({
-    where: {
-      status,
-      category: category === UNCLASSIFIED ? null : category,
-      ...(search && searchWhere(search)),
-    },
-    select: ticketListSelect,
-    // id breaks ties so tickets with the same value keep a stable order
-    orderBy: sortBy === "id" ? [primary] : [primary, { id: order }],
-  });
-  res.json({ tickets });
+  // The page and the total, in one round trip
+  const [tickets, total] = await prisma.$transaction([
+    prisma.ticket.findMany({
+      where,
+      select: ticketListSelect,
+      // id breaks ties so tickets with the same value keep a stable order, which paging relies on
+      orderBy: sortBy === "id" ? [primary] : [primary, { id: order }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    }),
+    prisma.ticket.count({ where }),
+  ]);
+  res.json({ tickets, total, page, pageSize });
 });

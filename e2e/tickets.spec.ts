@@ -41,11 +41,20 @@ async function createTickets(request: APIRequestContext, subjects: string[]) {
   return ids
 }
 
-// Lists tickets and keeps only those whose subject contains `tag`, preserving API order
-async function listTagged(request: APIRequestContext, tag: string, params: Record<string, string> = {}) {
+type ListResponse = { tickets: ListedTicket[]; total: number; page: number; pageSize: number }
+
+// One GET /api/tickets call that must succeed; returns the whole body
+async function listPage(request: APIRequestContext, params: Record<string, string> = {}) {
   const res = await request.get(ENDPOINT, { params })
   expect(res.status(), await res.text()).toBe(200)
-  const { tickets } = (await res.json()) as { tickets: ListedTicket[] }
+  return (await res.json()) as ListResponse
+}
+
+// Lists the tickets whose subject contains `tag`, preserving API order. The list is paginated
+// and the shared database keeps growing, so the request is scoped to the tag with ?search=
+// and asks for the largest page; `params` can add filters or sorting.
+async function listTagged(request: APIRequestContext, tag: string, params: Record<string, string> = {}) {
+  const { tickets } = await listPage(request, { search: tag, pageSize: '100', ...params })
   return tickets.filter((t) => t.subject.includes(tag))
 }
 
@@ -97,7 +106,7 @@ test.describe('Tickets API: access', () => {
 })
 
 test.describe('Tickets API: response shape', () => {
-  test('returns list fields only, without message bodies', async ({ request, agent }) => {
+  test('returns one page of list fields only, with total, page and pageSize', async ({ request, agent }) => {
     const tag = uniqueTag()
     const fromEmail = uniqueEmail('customer')
     const id = await createTicketViaEmail(request, {
@@ -108,10 +117,16 @@ test.describe('Tickets API: response shape', () => {
     })
     await signInViaApi(request, agent)
 
-    const res = await request.get(ENDPOINT)
+    const res = await request.get(ENDPOINT, { params: { search: tag } })
+    expect(res.status()).toBe(200)
     const raw = await res.text()
-    const ticket = (JSON.parse(raw) as { tickets: ListedTicket[] }).tickets.find((t) => t.id === id)!
+    const body = JSON.parse(raw) as ListResponse
+    const ticket = body.tickets.find((t) => t.id === id)!
 
+    // Defaults: page 1 of 10
+    expect(Object.keys(body).sort()).toEqual(['page', 'pageSize', 'tickets', 'total'])
+    expect(body).toMatchObject({ total: 1, page: 1, pageSize: 10 })
+    expect(body.tickets).toHaveLength(1)
     expect(Object.keys(ticket).sort()).toEqual(
       ['assignedTo', 'category', 'createdAt', 'fromEmail', 'fromName', 'id', 'status', 'subject', 'updatedAt'],
     )
@@ -250,11 +265,11 @@ test.describe('Tickets API: filters', () => {
     await signInViaApi(request, agent)
 
     for (const [status, id] of [['OPEN', open], ['RESOLVED', resolved], ['CLOSED', closed]] as const) {
-      const res = await request.get(ENDPOINT, { params: { status } })
-      const { tickets } = (await res.json()) as { tickets: ListedTicket[] }
-
+      // Unscoped: every ticket on the page has the status
+      const { tickets } = await listPage(request, { status, pageSize: '100' })
       expect(tickets.every((t) => t.status === status), `every ticket has status ${status}`).toBe(true)
-      expect(tickets.filter((t) => t.subject.includes(tag)).map((t) => t.id)).toEqual([id])
+      // Scoped to this test's tickets: exactly the one with that status
+      expect((await listTagged(request, tag, { status })).map((t) => t.id)).toEqual([id])
     }
   })
 
@@ -268,11 +283,10 @@ test.describe('Tickets API: filters', () => {
     setTicketFields(technical, { category: 'TECHNICAL_QUESTION' })
     await signInViaApi(request, agent)
 
-    const res = await request.get(ENDPOINT, { params: { category: 'REFUND_REQUEST' } })
-    const { tickets } = (await res.json()) as { tickets: ListedTicket[] }
+    const { tickets } = await listPage(request, { category: 'REFUND_REQUEST', pageSize: '100' })
 
     expect(tickets.every((t) => t.category === 'REFUND_REQUEST'), 'every ticket is a refund request').toBe(true)
-    expect(tickets.filter((t) => t.subject.includes(tag)).map((t) => t.id)).toEqual([refund])
+    expect((await listTagged(request, tag, { category: 'REFUND_REQUEST' })).map((t) => t.id)).toEqual([refund])
     // Without a filter all three are listed, including the unclassified one
     expect((await listTagged(request, tag)).map((t) => t.id)).toEqual([unclassified, technical, refund])
   })
@@ -306,12 +320,10 @@ test.describe('Tickets API: filters', () => {
     setTicketFields(refund, { category: 'REFUND_REQUEST' })
     await signInViaApi(request, agent)
 
-    const res = await request.get(ENDPOINT, { params: { category: 'none' } })
-    expect(res.status(), await res.text()).toBe(200)
-    const { tickets } = (await res.json()) as { tickets: ListedTicket[] }
+    const { tickets } = await listPage(request, { category: 'none', pageSize: '100' })
 
     expect(tickets.every((t) => t.category === null), 'every ticket is unclassified').toBe(true)
-    expect(tickets.filter((t) => t.subject.includes(tag)).map((t) => t.id)).toEqual([unclassified])
+    expect((await listTagged(request, tag, { category: 'none' })).map((t) => t.id)).toEqual([unclassified])
   })
 })
 
@@ -351,6 +363,46 @@ test.describe('Tickets API: search', () => {
   })
 })
 
+test.describe('Tickets API: pagination', () => {
+  test('total counts every matching ticket, and a page past the end is empty', async ({ request, agent }) => {
+    const tag = uniqueTag()
+    const ids = await createTickets(request, [`${tag} one`, `${tag} two`, `${tag} three`])
+    await signInViaApi(request, agent)
+    const params = { search: tag, pageSize: '10', sortBy: 'id', order: 'asc' }
+
+    const first = await listPage(request, params)
+    const past = await listPage(request, { ...params, page: '2' })
+
+    expect(first).toMatchObject({ total: 3, page: 1, pageSize: 10 })
+    expect(first.tickets.map((t) => t.id)).toEqual(ids)
+    expect(past).toEqual({ tickets: [], total: 3, page: 2, pageSize: 10 })
+  })
+
+  test('pages are complete and in the same order as one large page, ties broken by id', async ({ request, agent }) => {
+    const tag = uniqueTag()
+    // Only two distinct subjects, so a subject sort relies on the id tie-breaker for a stable order
+    const subjects = Array.from({ length: 12 }, (_, i) => `${tag} ${i % 2 === 0 ? 'bravo' : 'alpha'}`)
+    const ids = await createTickets(request, subjects)
+    await signInViaApi(request, agent)
+    const params = { search: tag, sortBy: 'subject', order: 'asc' }
+
+    const page1 = await listPage(request, { ...params, pageSize: '10', page: '1' })
+    const page2 = await listPage(request, { ...params, pageSize: '10', page: '2' })
+    const all = await listPage(request, { ...params, pageSize: '100' })
+
+    expect(page1.tickets).toHaveLength(10)
+    expect(page2.tickets).toHaveLength(2)
+    expect([page1.total, page2.total, all.total]).toEqual([12, 12, 12])
+    const paged = [...page1.tickets, ...page2.tickets].map((t) => t.id)
+    expect(new Set(paged).size).toBe(12)
+    expect(paged).toEqual(all.tickets.map((t) => t.id))
+    // alpha tickets (odd indexes) first, then bravo, each group in id order
+    const alpha = ids.filter((_, i) => i % 2 === 1)
+    const bravo = ids.filter((_, i) => i % 2 === 0)
+    expect(paged).toEqual([...alpha, ...bravo])
+  })
+})
+
 test.describe('Tickets API: validation', () => {
   const invalid: [string, Record<string, string> | string][] = [
     ['status', { status: 'PENDING' }],
@@ -361,6 +413,10 @@ test.describe('Tickets API: validation', () => {
     ['search', { search: 'x'.repeat(201) }],
     ['sortBy', { sortBy: 'fromEmail' }],
     ['order', { order: 'up' }],
+    ['page', { page: '0' }],
+    ['page', { page: 'abc' }],
+    // Only 10, 25, 50 and 100 are offered
+    ['pageSize', { pageSize: '7' }],
     // A repeated parameter arrives as an array, which is not a valid enum value
     ['status', 'status=OPEN&status=CLOSED'],
   ]
@@ -441,7 +497,7 @@ test.describe('Tickets page', () => {
     const id = await createTicketViaEmail(request, { subject, fromEmail, fromName: 'Pat Printer' })
     await signIn(page, agent)
     const createdAt = (await listTagged(page.request, tag))[0].createdAt
-    const createdLabel = await page.evaluate((iso) => new Date(iso).toLocaleString(), createdAt)
+    const createdLabel = await page.evaluate((iso) => new Date(iso).toLocaleDateString(), createdAt)
 
     await page.goto('/tickets')
 
@@ -489,6 +545,10 @@ test.describe('Tickets page', () => {
     const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
     await signIn(page, agent)
     await page.goto('/tickets')
+    // Scope the list to this test's tickets: a subject sort over the whole (paginated) list
+    // could push them off the first page
+    await page.getByRole('searchbox', { name: 'Search' }).fill(tag)
+    await expect(page.getByRole('navigation', { name: 'Pagination' })).toContainText('Showing 1–3 of 3 tickets')
 
     const subjectHeader = page.getByRole('columnheader', { name: 'Subject' })
     const createdHeader = page.getByRole('columnheader', { name: 'Created' })
@@ -563,5 +623,42 @@ test.describe('Tickets page', () => {
     await expect(searchBox).toHaveValue('')
     await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
     await expect(clear).toBeHidden()
+  })
+
+  test('pages through search results with Rows per page and Next page', async ({ page, request, agent }) => {
+    const tag = uniqueTag()
+    const subjects = Array.from({ length: 12 }, (_, i) => `${tag} item ${String(i + 1).padStart(2, '0')}`)
+    await createTickets(request, subjects)
+    // Newest first: the oldest two land on page 2
+    const newestFirst = [...subjects].reverse()
+    const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
+    await signIn(page, agent)
+    await page.goto('/tickets')
+
+    const pagination = page.getByRole('navigation', { name: 'Pagination' })
+    const next = pagination.getByRole('button', { name: 'Next page' })
+    const rowsPerPage = pagination.getByLabel('Rows per page')
+    await page.getByRole('searchbox', { name: 'Search' }).fill(tag)
+
+    // 10 rows per page by default
+    await expect(rowsPerPage).toHaveValue('10')
+    await expect(pagination).toContainText('Showing 1–10 of 12 tickets')
+    await expect(pagination).toContainText('Page 1 of 2')
+    await expect(taggedRows(page, tag)).toHaveText(asRows(newestFirst.slice(0, 10)))
+    await expect(pagination.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+
+    await next.click()
+
+    await expect(pagination).toContainText('Showing 11–12 of 12 tickets')
+    await expect(pagination).toContainText('Page 2 of 2')
+    await expect(taggedRows(page, tag)).toHaveText(asRows(newestFirst.slice(10)))
+    await expect(next).toBeDisabled()
+    await expect(pagination.getByRole('button', { name: 'Last page' })).toBeDisabled()
+
+    await rowsPerPage.selectOption('25')
+
+    await expect(pagination).toContainText('Showing 1–12 of 12 tickets')
+    await expect(pagination).toContainText('Page 1 of 1')
+    await expect(taggedRows(page, tag)).toHaveText(asRows(newestFirst))
   })
 })
