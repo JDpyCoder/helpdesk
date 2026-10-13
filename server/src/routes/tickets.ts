@@ -31,11 +31,15 @@ ticketsRouter.get("/", async (req, res) => {
   }
   const { status, category, sortBy, order } = parsed.data;
 
+  // assignedTo sorts by the assignee's name. Enums (status, category) sort in their schema.prisma
+  // declaration order, and nulls (unassigned, unclassified) follow Postgres: last asc, first desc.
+  const primary = sortBy === "assignedTo" ? { assignedTo: { name: order } } : { [sortBy]: order };
+
   const tickets = await prisma.ticket.findMany({
     where: { status, category },
     select: ticketListSelect,
-    // id breaks ties so tickets with the same timestamp or subject keep a stable order
-    orderBy: [{ [sortBy]: order }, { id: order }],
+    // id breaks ties so tickets with the same value keep a stable order
+    orderBy: sortBy === "id" ? [primary] : [primary, { id: order }],
   });
   res.json({ tickets });
 });

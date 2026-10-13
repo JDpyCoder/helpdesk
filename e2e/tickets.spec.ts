@@ -192,6 +192,53 @@ test.describe('Tickets API: sorting', () => {
     expect(byCreated.map((t) => t.id)).toEqual([newer, older])
     expect(byUpdated.map((t) => t.id)).toEqual([older, newer])
   })
+
+  test('sorts by assignee name, with unassigned tickets last in asc and first in desc', async ({ request, agent }) => {
+    const tag = uniqueTag()
+    const suffix = randomUUID().slice(0, 6)
+    const alpha = createUser({ role: 'AGENT', name: `Alpha ${suffix}` })
+    const bravo = createUser({ role: 'AGENT', name: `Bravo ${suffix}` })
+    // Created out of assignee order, so a createdAt or id sort would give a different result
+    const [toBravo, unassigned, toAlpha] = await createTickets(
+      request,
+      [`${tag} to bravo`, `${tag} unassigned`, `${tag} to alpha`],
+    )
+    setTicketFields(toBravo, { assigneeEmail: bravo.email })
+    setTicketFields(toAlpha, { assigneeEmail: alpha.email })
+    await signInViaApi(request, agent)
+
+    const asc = await listTagged(request, tag, { sortBy: 'assignedTo', order: 'asc' })
+    const desc = await listTagged(request, tag, { sortBy: 'assignedTo', order: 'desc' })
+
+    expect(asc.map((t) => t.id)).toEqual([toAlpha, toBravo, unassigned])
+    expect(desc.map((t) => t.id)).toEqual([unassigned, toBravo, toAlpha])
+  })
+
+  test('sorts status in workflow order (OPEN, RESOLVED, CLOSED), not alphabetically', async ({ request, agent }) => {
+    const tag = uniqueTag()
+    // Creation order differs from both enum order and alphabetical order (CLOSED, OPEN, RESOLVED)
+    const [resolved, closed, open] = await createTickets(request, [`${tag} resolved`, `${tag} closed`, `${tag} open`])
+    setTicketFields(resolved, { status: 'RESOLVED' })
+    setTicketFields(closed, { status: 'CLOSED' })
+    await signInViaApi(request, agent)
+
+    const tickets = await listTagged(request, tag, { sortBy: 'status', order: 'asc' })
+
+    expect(tickets.map((t) => t.status)).toEqual(['OPEN', 'RESOLVED', 'CLOSED'])
+    expect(tickets.map((t) => t.id)).toEqual([open, resolved, closed])
+  })
+
+  test('sorts by id in both directions', async ({ request, agent }) => {
+    const tag = uniqueTag()
+    const ids = await createTickets(request, [`${tag} first`, `${tag} second`, `${tag} third`])
+    await signInViaApi(request, agent)
+
+    const asc = await listTagged(request, tag, { sortBy: 'id', order: 'asc' })
+    const desc = await listTagged(request, tag, { sortBy: 'id', order: 'desc' })
+
+    expect(asc.map((t) => t.id)).toEqual(ids)
+    expect(desc.map((t) => t.id)).toEqual([...ids].reverse())
+  })
 })
 
 test.describe('Tickets API: filters', () => {
@@ -375,5 +422,33 @@ test.describe('Tickets page', () => {
     await expect(closedCells.nth(3)).toHaveText('Closed')
     await expect(closedCells.nth(4)).toHaveText('Technical question')
     await expect(closedCells.nth(5)).toHaveText('Unassigned')
+  })
+
+  test('clicking the Subject header sorts rows by subject, and clicking again reverses them', async ({ page, request, agent }) => {
+    const tag = uniqueTag()
+    // Created out of alphabetical order, so the default newest-first order differs from both sorts
+    const subjects = [`${tag} bravo`, `${tag} charlie`, `${tag} alpha`]
+    await createTickets(request, subjects)
+    const alphabetical = [...subjects].sort()
+    const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
+    await signIn(page, agent)
+    await page.goto('/tickets')
+
+    const subjectHeader = page.getByRole('columnheader', { name: 'Subject' })
+    const createdHeader = page.getByRole('columnheader', { name: 'Created' })
+    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
+    await expect(subjectHeader).toHaveAttribute('aria-sort', 'none')
+    await expect(createdHeader).toHaveAttribute('aria-sort', 'descending')
+
+    await subjectHeader.getByRole('button', { name: 'Subject' }).click()
+
+    await expect(subjectHeader).toHaveAttribute('aria-sort', 'ascending')
+    await expect(createdHeader).toHaveAttribute('aria-sort', 'none')
+    await expect(taggedRows(page, tag)).toHaveText(asRows(alphabetical))
+
+    await subjectHeader.getByRole('button', { name: 'Subject' }).click()
+
+    await expect(subjectHeader).toHaveAttribute('aria-sort', 'descending')
+    await expect(taggedRows(page, tag)).toHaveText(asRows([...alphabetical].reverse()))
   })
 })

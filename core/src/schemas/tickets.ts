@@ -10,12 +10,29 @@ export const ticketCategorySchema = z.enum(["GENERAL_QUESTION", "TECHNICAL_QUEST
 export const TicketCategory = ticketCategorySchema.enum;
 export type TicketCategory = z.infer<typeof ticketCategorySchema>;
 
+// Columns GET /api/tickets can sort by; the client's table uses the same names as column ids.
+// assignedTo sorts by the assignee's name.
+export const ticketSortFieldSchema = z.enum([
+  "id",
+  "subject",
+  "fromName",
+  "status",
+  "category",
+  "assignedTo",
+  "createdAt",
+  "updatedAt",
+]);
+export type TicketSortField = z.infer<typeof ticketSortFieldSchema>;
+
+export const sortOrderSchema = z.enum(["asc", "desc"]);
+export type SortOrder = z.infer<typeof sortOrderSchema>;
+
 // GET /api/tickets query string: optional filters plus sorting (newest first by default)
 export const listTicketsQuerySchema = z.object({
   status: ticketStatusSchema.optional(),
   category: ticketCategorySchema.optional(),
-  sortBy: z.enum(["createdAt", "updatedAt", "subject"]).default("createdAt"),
-  order: z.enum(["asc", "desc"]).default("desc"),
+  sortBy: ticketSortFieldSchema.default("createdAt"),
+  order: sortOrderSchema.default("desc"),
 });
 
 export type ListTicketsQuery = z.infer<typeof listTicketsQuerySchema>;
