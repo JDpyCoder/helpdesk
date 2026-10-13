@@ -8,7 +8,7 @@ function TicketsPage() {
         <CardTitle className="text-2xl" role="heading" aria-level={1}>
           Tickets
         </CardTitle>
-        <CardDescription>Support requests from customers, newest first</CardDescription>
+        <CardDescription>Support requests from customers</CardDescription>
       </CardHeader>
       <CardContent className="text-sm">
         <TicketsTable />

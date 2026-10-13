@@ -208,6 +208,200 @@ describe('TicketsPage', () => {
     })
   })
 
+  describe('filtering', () => {
+    function lastParams() {
+      return mockGet.mock.lastCall?.[1]?.params
+    }
+
+    it('shows Status and Category filters set to All by default', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      const status = screen.getByRole('combobox', { name: 'Status' })
+      const category = screen.getByRole('combobox', { name: 'Category' })
+      expect(status).toHaveValue('')
+      expect(category).toHaveValue('')
+      expect(within(status).getAllByRole('option').map((o) => o.textContent)).toEqual(
+        ['All statuses', 'Open', 'Resolved', 'Closed'],
+      )
+      expect(within(category).getAllByRole('option').map((o) => o.textContent)).toEqual(
+        ['All categories', 'General question', 'Technical question', 'Refund request', 'Unclassified'],
+      )
+      expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+    })
+
+    it('requests tickets with the selected status', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'RESOLVED' } })
+
+      await waitFor(() => expect(lastParams()).toEqual({ sortBy: 'createdAt', order: 'desc', status: 'RESOLVED' }))
+      expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('RESOLVED')
+    })
+
+    it('requests unclassified tickets with category=none', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'Category' }), { target: { value: 'none' } })
+
+      await waitFor(() => expect(lastParams()).toEqual({ sortBy: 'createdAt', order: 'desc', category: 'none' }))
+    })
+
+    it('combines both filters with the current sort', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.click(within(screen.getByRole('columnheader', { name: 'Subject' })).getByRole('button'))
+      fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'OPEN' } })
+      fireEvent.change(screen.getByRole('combobox', { name: 'Category' }), { target: { value: 'REFUND_REQUEST' } })
+
+      await waitFor(() =>
+        expect(lastParams()).toEqual({ sortBy: 'subject', order: 'asc', status: 'OPEN', category: 'REFUND_REQUEST' }),
+      )
+    })
+
+    it('drops a filter when its All option is chosen again', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+      const status = screen.getByRole('combobox', { name: 'Status' })
+
+      fireEvent.change(status, { target: { value: 'CLOSED' } })
+      await waitFor(() => expect(lastParams()).toHaveProperty('status', 'CLOSED'))
+
+      fireEvent.change(status, { target: { value: '' } })
+      await waitFor(() => expect(lastParams()).toEqual({ sortBy: 'createdAt', order: 'desc' }))
+    })
+
+    it('clears all filters with the Clear filters button', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'OPEN' } })
+      fireEvent.change(screen.getByRole('combobox', { name: 'Category' }), { target: { value: 'none' } })
+      fireEvent.click(await screen.findByRole('button', { name: 'Clear filters' }))
+
+      await waitFor(() => expect(lastParams()).toEqual({ sortBy: 'createdAt', order: 'desc' }))
+      expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('')
+      expect(screen.getByRole('combobox', { name: 'Category' })).toHaveValue('')
+      expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+    })
+
+    it('shows a no-matches message and keeps the filters when nothing matches', async () => {
+      mockGet.mockResolvedValueOnce({ data: { tickets } }).mockResolvedValue({ data: { tickets: [] } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'CLOSED' } })
+
+      expect(await screen.findByText('No tickets match your search or filters.')).toBeInTheDocument()
+      expect(screen.queryByText('No tickets yet.')).not.toBeInTheDocument()
+      expect(screen.getByRole('combobox', { name: 'Status' })).toHaveValue('CLOSED')
+      expect(screen.getByRole('button', { name: 'Clear filters' })).toBeInTheDocument()
+    })
+
+    it('keeps the current rows, marked busy, while the filtered list loads', async () => {
+      mockGet.mockResolvedValueOnce({ data: { tickets } }).mockReturnValue(new Promise(() => {}))
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'OPEN' } })
+
+      await waitFor(() => expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true'))
+      expect(screen.getByRole('cell', { name: 'Refund for my course' })).toBeInTheDocument()
+      expect(screen.queryByRole('status', { name: 'Loading tickets' })).not.toBeInTheDocument()
+    })
+  })
+
+  describe('search', () => {
+    function lastParams() {
+      return mockGet.mock.lastCall?.[1]?.params
+    }
+
+    function searchBox() {
+      return screen.getByRole('searchbox', { name: 'Search' })
+    }
+
+    it('shows an empty search box', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      expect(searchBox()).toHaveValue('')
+      expect(searchBox()).toHaveAttribute('placeholder', 'Subject, customer or #id')
+    })
+
+    it('sends the search once typing pauses, not on every keystroke', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      for (const value of ['r', 're', 'ref', 'refund']) fireEvent.change(searchBox(), { target: { value } })
+
+      await waitFor(() => expect(lastParams()).toEqual({ sortBy: 'createdAt', order: 'desc', search: 'refund' }))
+      // The initial load plus one search request
+      expect(mockGet).toHaveBeenCalledTimes(2)
+    })
+
+    it('trims the search and leaves a blank one out of the request', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.change(searchBox(), { target: { value: '  casey  ' } })
+      await waitFor(() => expect(lastParams()).toEqual({ sortBy: 'createdAt', order: 'desc', search: 'casey' }))
+
+      fireEvent.change(searchBox(), { target: { value: '   ' } })
+      await waitFor(() => expect(lastParams()).toEqual({ sortBy: 'createdAt', order: 'desc' }))
+    })
+
+    it('combines the search with filters and sorting', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.click(within(screen.getByRole('columnheader', { name: 'Subject' })).getByRole('button'))
+      fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'OPEN' } })
+      fireEvent.change(searchBox(), { target: { value: '#42' } })
+
+      await waitFor(() =>
+        expect(lastParams()).toEqual({ sortBy: 'subject', order: 'asc', status: 'OPEN', search: '#42' }),
+      )
+    })
+
+    it('shows Clear filters while searching, and clearing empties the search box', async () => {
+      mockGet.mockResolvedValue({ data: { tickets } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.change(searchBox(), { target: { value: 'login' } })
+      await waitFor(() => expect(lastParams()).toHaveProperty('search', 'login'))
+      fireEvent.click(screen.getByRole('button', { name: 'Clear filters' }))
+
+      expect(searchBox()).toHaveValue('')
+      await waitFor(() => expect(lastParams()).toEqual({ sortBy: 'createdAt', order: 'desc' }))
+      expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
+    })
+
+    it('shows the no-matches message when the search finds nothing', async () => {
+      mockGet.mockResolvedValueOnce({ data: { tickets } }).mockResolvedValue({ data: { tickets: [] } })
+      renderWithQuery(<TicketsPage />)
+      await screen.findByRole('table')
+
+      fireEvent.change(searchBox(), { target: { value: 'no such ticket' } })
+
+      expect(await screen.findByText('No tickets match your search or filters.')).toBeInTheDocument()
+      expect(searchBox()).toHaveValue('no such ticket')
+    })
+  })
+
   it('shows an empty state when there are no tickets', async () => {
     mockGet.mockResolvedValue({ data: { tickets: [] } })
     renderWithQuery(<TicketsPage />)

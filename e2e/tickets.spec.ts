@@ -299,6 +299,56 @@ test.describe('Tickets API: filters', () => {
     // "a-match" (ticket b) sorts before "b-match" (ticket a)
     expect(tickets.map((t) => t.id)).toEqual([b, a])
   })
+
+  test('category=none lists only unclassified tickets', async ({ request, agent }) => {
+    const tag = uniqueTag()
+    const [refund, unclassified] = await createTickets(request, [`${tag} refund`, `${tag} unclassified`])
+    setTicketFields(refund, { category: 'REFUND_REQUEST' })
+    await signInViaApi(request, agent)
+
+    const res = await request.get(ENDPOINT, { params: { category: 'none' } })
+    expect(res.status(), await res.text()).toBe(200)
+    const { tickets } = (await res.json()) as { tickets: ListedTicket[] }
+
+    expect(tickets.every((t) => t.category === null), 'every ticket is unclassified').toBe(true)
+    expect(tickets.filter((t) => t.subject.includes(tag)).map((t) => t.id)).toEqual([unclassified])
+  })
+})
+
+test.describe('Tickets API: search', () => {
+  // Lists the ids of every ticket matching `search`, in API order
+  async function searchIds(request: APIRequestContext, search: string) {
+    const res = await request.get(ENDPOINT, { params: { search } })
+    expect(res.status(), await res.text()).toBe(200)
+    return ((await res.json()) as { tickets: ListedTicket[] }).tickets.map((t) => t.id)
+  }
+
+  test('matches subject, sender name and sender email case-insensitively', async ({ request, agent }) => {
+    const tag = uniqueTag()
+    const term = `Q${randomUUID().slice(0, 8)}`
+    const [widget] = await createTickets(request, [`${tag} widget broken`, `${tag} gadget broken`])
+    // Neither subject contains `term`; only the sender fields do
+    const byName = await createTicketViaEmail(request, { subject: `${tag} by name`, fromName: `Nina ${term}name` })
+    const byEmail = await createTicketViaEmail(request, {
+      subject: `${tag} by email`,
+      fromEmail: `${term.toLowerCase()}mail@example.com`,
+    })
+    await createTicketViaEmail(request, { subject: `${tag} no match` })
+    await signInViaApi(request, agent)
+
+    // The search text contains the tag, so only this test's tickets can match
+    expect(await searchIds(request, `${tag.toLowerCase()} WIDGET`)).toEqual([widget])
+    expect(await searchIds(request, `${term}NAME`.toLowerCase())).toEqual([byName])
+    expect(await searchIds(request, `${term}MAIL@example`.toUpperCase())).toEqual([byEmail])
+  })
+
+  test('search=#<id> returns that ticket', async ({ request, agent }) => {
+    const tag = uniqueTag()
+    const [id] = await createTickets(request, [`${tag} find me by id`])
+    await signInViaApi(request, agent)
+
+    expect(await searchIds(request, `#${id}`)).toContain(id)
+  })
 })
 
 test.describe('Tickets API: validation', () => {
@@ -306,6 +356,9 @@ test.describe('Tickets API: validation', () => {
     ['status', { status: 'PENDING' }],
     ['status', { status: 'open' }],
     ['category', { category: 'BILLING' }],
+    // The unclassified filter is the lowercase literal "none" only
+    ['category', { category: 'NONE' }],
+    ['search', { search: 'x'.repeat(201) }],
     ['sortBy', { sortBy: 'fromEmail' }],
     ['order', { order: 'up' }],
     // A repeated parameter arrives as an array, which is not a valid enum value
@@ -313,7 +366,10 @@ test.describe('Tickets API: validation', () => {
   ]
 
   for (const [field, params] of invalid) {
-    const label = typeof params === 'string' ? params : new URLSearchParams(params).toString()
+    // Long values (the 201-character search) are shortened so the test title stays readable
+    const label = typeof params === 'string'
+      ? params
+      : new URLSearchParams(params).toString().replace(/=([^&]{20})[^&]{20,}/g, '=$1...')
     test(`rejects ${label} with 400 and a field error for ${field}`, async ({ request, agent }) => {
       await signInViaApi(request, agent)
 
@@ -450,5 +506,62 @@ test.describe('Tickets page', () => {
 
     await expect(subjectHeader).toHaveAttribute('aria-sort', 'descending')
     await expect(taggedRows(page, tag)).toHaveText(asRows([...alphabetical].reverse()))
+  })
+
+  test('filters by status and category, and Clear filters shows every ticket again', async ({ page, request, agent }) => {
+    const tag = uniqueTag()
+    const subjects = [`${tag} open`, `${tag} resolved-refund`, `${tag} resolved-unclassified`, `${tag} closed`]
+    const [, resolvedRefund, resolvedUnclassified, closed] = await createTickets(request, subjects)
+    setTicketFields(resolvedRefund, { status: 'RESOLVED', category: 'REFUND_REQUEST' })
+    setTicketFields(resolvedUnclassified, { status: 'RESOLVED' })
+    setTicketFields(closed, { status: 'CLOSED' })
+    await signIn(page, agent)
+    await page.goto('/tickets')
+
+    const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
+    const clear = page.getByRole('button', { name: 'Clear filters' })
+    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
+    await expect(clear).toBeHidden()
+
+    await page.getByLabel('Status').selectOption({ label: 'Resolved' })
+
+    await expect(taggedRows(page, tag)).toHaveText(
+      asRows([`${tag} resolved-unclassified`, `${tag} resolved-refund`]),
+    )
+    await expect(clear).toBeVisible()
+
+    await page.getByLabel('Category').selectOption({ label: 'Unclassified' })
+
+    await expect(taggedRows(page, tag)).toHaveText(asRows([`${tag} resolved-unclassified`]))
+
+    await clear.click()
+
+    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
+    await expect(page.getByLabel('Status')).toHaveValue('')
+    await expect(page.getByLabel('Category')).toHaveValue('')
+    await expect(clear).toBeHidden()
+  })
+
+  test('the search box narrows the list, and Clear filters empties it', async ({ page, request, agent }) => {
+    const tag = uniqueTag()
+    const subjects = [`${tag} alpha`, `${tag} bravo`]
+    await createTickets(request, subjects)
+    await signIn(page, agent)
+    await page.goto('/tickets')
+
+    const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
+    const searchBox = page.getByRole('searchbox', { name: 'Search' })
+    const clear = page.getByRole('button', { name: 'Clear filters' })
+    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
+
+    await searchBox.fill(`${tag} BRAVO`)
+
+    await expect(taggedRows(page, tag)).toHaveText(asRows([`${tag} bravo`]))
+
+    await clear.click()
+
+    await expect(searchBox).toHaveValue('')
+    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
+    await expect(clear).toBeHidden()
   })
 })

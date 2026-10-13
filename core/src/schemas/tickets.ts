@@ -27,10 +27,18 @@ export type TicketSortField = z.infer<typeof ticketSortFieldSchema>;
 export const sortOrderSchema = z.enum(["asc", "desc"]);
 export type SortOrder = z.infer<typeof sortOrderSchema>;
 
+// ?category= also accepts "none" for tickets that have no category yet (unclassified)
+export const UNCLASSIFIED = "none";
+export const ticketCategoryFilterSchema = z.union([ticketCategorySchema, z.literal(UNCLASSIFIED)]);
+export type TicketCategoryFilter = z.infer<typeof ticketCategoryFilterSchema>;
+
 // GET /api/tickets query string: optional filters plus sorting (newest first by default)
 export const listTicketsQuerySchema = z.object({
   status: ticketStatusSchema.optional(),
-  category: ticketCategorySchema.optional(),
+  category: ticketCategoryFilterSchema.optional(),
+  // Free text matched against subject, sender name and email; "42" or "#42" also matches ticket #42.
+  // Blank means no search.
+  search: z.string().trim().max(200, "Search must be at most 200 characters").optional(),
   sortBy: ticketSortFieldSchema.default("createdAt"),
   order: sortOrderSchema.default("desc"),
 });
