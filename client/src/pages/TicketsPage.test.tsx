@@ -105,7 +105,7 @@ describe('TicketsPage', () => {
       'Refund for my course',
       'Casey Customercasey@example.com',
       'Open',
-      'Refund request',
+      'Refund Request',
       'Alan Agent',
       new Date(tickets[0].createdAt).toLocaleDateString(),
     ])
@@ -257,7 +257,7 @@ describe('TicketsPage', () => {
         ['All statuses', 'Open', 'Resolved', 'Closed'],
       )
       expect(within(category).getAllByRole('option').map((o) => o.textContent)).toEqual(
-        ['All categories', 'General question', 'Technical question', 'Refund request', 'Unclassified'],
+        ['All categories', 'General Question', 'Technical Question', 'Refund Request', 'Unclassified'],
       )
       expect(screen.queryByRole('button', { name: 'Clear filters' })).not.toBeInTheDocument()
     })

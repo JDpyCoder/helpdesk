@@ -527,12 +527,12 @@ test.describe('Tickets page', () => {
 
     const resolvedCells = taggedRows(page, `${tag} resolved`).getByRole('cell')
     await expect(resolvedCells.nth(3)).toHaveText('Resolved')
-    await expect(resolvedCells.nth(4)).toHaveText('Refund request')
+    await expect(resolvedCells.nth(4)).toHaveText('Refund Request')
     await expect(resolvedCells.nth(5)).toHaveText(assignee.name)
 
     const closedCells = taggedRows(page, `${tag} closed`).getByRole('cell')
     await expect(closedCells.nth(3)).toHaveText('Closed')
-    await expect(closedCells.nth(4)).toHaveText('Technical question')
+    await expect(closedCells.nth(4)).toHaveText('Technical Question')
     await expect(closedCells.nth(5)).toHaveText('Unassigned')
   })
 

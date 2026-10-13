@@ -98,10 +98,10 @@ describe('TicketDetailPage', () => {
       'Assigned to',
       'Created',
     ])
-    const [status, category, , created] = screen.getAllByRole('definition')
-    expect(status).toHaveTextContent('Open')
-    expect(category).toHaveTextContent('Refund request')
+    const [, , , created] = screen.getAllByRole('definition')
     expect(created).toHaveTextContent(new Date(ticket.createdAt).toLocaleString())
+    expect(screen.getByRole('combobox', { name: 'Status' })).toHaveDisplayValue('Open')
+    expect(screen.getByRole('combobox', { name: 'Category' })).toHaveDisplayValue('Refund Request')
     expect(screen.getByRole('combobox', { name: 'Assigned to' })).toHaveDisplayValue('Alan Agent')
   })
 
@@ -110,8 +110,7 @@ describe('TicketDetailPage', () => {
     renderPage()
 
     await screen.findByRole('heading', { level: 1 })
-    const [, category] = screen.getAllByRole('definition')
-    expect(category).toHaveTextContent('Unclassified')
+    expect(screen.getByRole('combobox', { name: 'Category' })).toHaveDisplayValue('Unclassified')
     expect(screen.getByRole('combobox', { name: 'Assigned to' })).toHaveDisplayValue('Unassigned')
   })
 
