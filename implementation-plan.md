@@ -36,7 +36,7 @@
 ## Phase 5: AI Features
 
 - [ ] Set up Claude API integration
-- [ ] Implement auto-classification endpoint (categorize incoming tickets)
+- [x] Implement auto-classification endpoint (categorize incoming tickets)
 - [x] Implement AI summary endpoint (generate ticket summary)
 - [ ] Implement AI suggested reply endpoint
 - [ ] Build knowledge base structure and seed with initial content

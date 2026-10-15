@@ -46,7 +46,9 @@ export default defineConfig({
       // Not /api/health: servers start before globalSetup, so on a first run the test
       // database doesn't exist yet and the health check would never pass
       url: `${apiUrl}/api/auth/ok`,
-      env: { ...testEnv, NODE_ENV: 'test' },
+      // An empty Gemini key overrides the one Bun would load from server/.env, so inbound
+      // emails are never sent to Gemini for classification during e2e
+      env: { ...testEnv, NODE_ENV: 'test', GOOGLE_GENERATIVE_AI_API_KEY: '' },
       // Never reuse: a server already on this port might be wired to the dev database
       reuseExistingServer: false,
       timeout: 60_000,

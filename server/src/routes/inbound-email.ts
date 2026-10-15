@@ -3,6 +3,7 @@ import { Router } from "express";
 import { prisma } from "../db.ts";
 import { Prisma } from "../generated/prisma/client.ts";
 import { SenderType, TicketStatus } from "../generated/prisma/enums.ts";
+import { classifyTicketInBackground } from "../lib/classify-ticket.ts";
 import { sendValidationError } from "../lib/validation.ts";
 
 // Inbound email webhook: mounted at /api/inbound-email behind requireInboundSecret (see app.ts).
@@ -69,6 +70,8 @@ inboundEmailRouter.post("/", async (req, res) => {
       select: { id: true },
     });
     res.status(201).json({ ticketId: ticket.id, created: true });
+    // Not awaited: the sender gets its answer now, and the category appears when Gemini replies
+    void classifyTicketInBackground(ticket.id, { subject, body: text });
   } catch (err) {
     // Two deliveries of the same email raced past the duplicate check; the other one stored it
     const raced = isUniqueViolation(err) ? await findDuplicate() : null;
