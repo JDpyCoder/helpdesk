@@ -5,6 +5,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { prisma } from "../db.ts";
 import { SenderType, TicketStatus } from "../generated/prisma/enums.ts";
+import { getAiAgentId } from "./ai-agent.ts";
 import { geminiModel, isGeminiConfigured } from "./gemini.ts";
 import { signature } from "./polish-reply.ts";
 
@@ -147,12 +148,20 @@ async function readKnowledgeBase() {
 // Statuses of a ticket still in the AI's hands
 const aiStatuses: TicketStatus[] = [TicketStatus.NEW, TicketStatus.PROCESSING];
 
-// Hands a ticket to the agents: NEW or PROCESSING becomes OPEN, and it shows up in the ticket list
+// Hands a ticket to the agents: NEW or PROCESSING becomes OPEN, and it shows up in the ticket list.
+// It is also unassigned from the AI Agent, unless someone has assigned it to a person meanwhile.
 export async function releaseTicket(ticketId: number) {
-  await prisma.ticket.updateMany({
+  const { count } = await prisma.ticket.updateMany({
     where: { id: ticketId, status: { in: aiStatuses } },
     data: { status: TicketStatus.OPEN },
   });
+  const aiAgentId = count > 0 ? await getAiAgentId() : null;
+  if (aiAgentId) {
+    await prisma.ticket.updateMany({
+      where: { id: ticketId, assignedToId: aiAgentId },
+      data: { assignedToId: null },
+    });
+  }
 }
 
 // Runs the auto-resolve-ticket job (see jobs.ts) for a NEW ticket: moves it to PROCESSING, then, if the knowledge
@@ -210,7 +219,7 @@ export async function autoResolveStoredTicket(ticketId: number) {
   await prisma.$transaction(async (tx) => {
     const { count } = await tx.ticket.updateMany({
       where: { id: ticketId, status: TicketStatus.PROCESSING },
-      data: { status: TicketStatus.RESOLVED },
+      data: { status: TicketStatus.RESOLVED, resolvedAt: new Date() },
     });
     if (count === 0) return;
     await tx.ticketMessage.create({

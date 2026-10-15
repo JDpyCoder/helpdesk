@@ -117,6 +117,8 @@ model Ticket {
   assignedToId String?
   assignedTo   User?           @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
   messages     TicketMessage[]
+  // When the ticket last went from unresolved to RESOLVED/CLOSED; cleared when it reopens
+  resolvedAt   DateTime?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 

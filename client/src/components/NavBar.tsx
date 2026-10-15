@@ -24,6 +24,9 @@ function NavBar({ userName, isAdmin }: { userName: string; isAdmin: boolean }) {
           <Link to="/" className="text-lg font-semibold">
             Helpdesk
           </Link>
+          <TextLink to="/" variant="nav">
+            Dashboard
+          </TextLink>
           <TextLink to="/tickets" variant="nav">
             Tickets
           </TextLink>

@@ -52,7 +52,8 @@
 
 ## Phase 7: Dashboard
 
-- [ ] Create dashboard page with ticket overview stats (open, resolved, closed counts)
+- [x] Create dashboard page with ticket overview stats (total, open, resolved by AI, AI %, average resolution time)
+- [x] Add tickets-per-day bar chart (last 30 days)
 - [ ] Add tickets by category breakdown
 - [ ] Add recent tickets list
 - [ ] Add quick filters to navigate to filtered ticket list

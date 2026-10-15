@@ -17,10 +17,12 @@ mock.module("@ai-sdk/google", () => ({ google: (id: string) => ({ modelId: id })
 const findUnique = mock();
 const updateMany = mock();
 const createMessage = mock();
+const findUser = mock();
 const tx = { ticket: { updateMany }, ticketMessage: { create: createMessage } };
 mock.module("../db.ts", () => ({
   prisma: {
     ticket: { findUnique, updateMany },
+    user: { findFirst: findUser },
     $transaction: (fn: (client: typeof tx) => Promise<unknown>) => fn(tx),
   },
 }));
@@ -48,6 +50,7 @@ afterEach(() => {
   findUnique.mockReset();
   updateMany.mockReset();
   createMessage.mockReset();
+  findUser.mockReset();
   writeFileSync(knowledgeBasePath, "## Forgot password\nClick Forgot Password on the login page.");
 });
 
@@ -185,7 +188,7 @@ describe("autoResolveStoredTicket", () => {
     expect(sentArgs().prompt).toContain("<email>\nI can't log in, I forgot my password.\n</email>");
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: 7, status: TicketStatus.PROCESSING },
-      data: { status: TicketStatus.RESOLVED },
+      data: { status: TicketStatus.RESOLVED, resolvedAt: expect.any(Date) },
     });
     expect(createMessage).toHaveBeenCalledWith({
       data: {
@@ -201,11 +204,35 @@ describe("autoResolveStoredTicket", () => {
   it("releases the ticket to the agents when the AI can't resolve it", async () => {
     findUnique.mockResolvedValue(stored);
     generateText.mockResolvedValue({ output: { canResolve: false, confidence: 0.9, reply: "" } });
+    updateMany.mockResolvedValue({ count: 1 });
 
     await autoResolveStoredTicket(7);
 
     expect(updateMany).toHaveBeenLastCalledWith(released);
     expect(createMessage).not.toHaveBeenCalled();
+  });
+
+  it("unassigns a released ticket from the AI Agent, but not from anyone else", async () => {
+    findUnique.mockResolvedValue(stored);
+    generateText.mockResolvedValue({ output: { canResolve: false, confidence: 0.9, reply: "" } });
+    updateMany.mockResolvedValue({ count: 1 });
+    findUser.mockResolvedValue({ id: "ai-1" });
+
+    await autoResolveStoredTicket(7);
+
+    expect(updateMany.mock.calls.at(-2)?.[0]).toEqual(released);
+    expect(updateMany).toHaveBeenLastCalledWith({ where: { id: 7, assignedToId: "ai-1" }, data: { assignedToId: null } });
+  });
+
+  it("leaves the assignee alone when the ticket had already left the AI", async () => {
+    findUnique.mockResolvedValue({ ...stored, status: TicketStatus.PROCESSING });
+    generateText.mockResolvedValue({ output: { canResolve: false, confidence: 0.9, reply: "" } });
+    updateMany.mockResolvedValue({ count: 0 });
+    findUser.mockResolvedValue({ id: "ai-1" });
+
+    await autoResolveStoredTicket(7);
+
+    expect(updateMany.mock.calls).toEqual([[released]]);
   });
 
   it("adds no reply when the ticket was released in the meantime", async () => {
@@ -220,6 +247,7 @@ describe("autoResolveStoredTicket", () => {
 
   it("releases the ticket without calling Gemini when the knowledge base is empty", async () => {
     findUnique.mockResolvedValue(stored);
+    updateMany.mockResolvedValue({ count: 1 });
     writeFileSync(knowledgeBasePath, "  \n");
 
     await autoResolveStoredTicket(7);
@@ -241,6 +269,7 @@ describe("autoResolveStoredTicket", () => {
   it("releases the ticket as OPEN without retrying when generateText throws", async () => {
     findUnique.mockResolvedValue(stored);
     generateText.mockRejectedValue(new Error("quota exceeded"));
+    updateMany.mockResolvedValue({ count: 1 });
     const consoleError = spyOn(console, "error").mockImplementation(() => {});
 
     try {

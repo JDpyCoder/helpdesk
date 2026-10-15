@@ -10,6 +10,7 @@ import { type Response, Router } from "express";
 import { prisma } from "../db.ts";
 import type { Prisma } from "../generated/prisma/client.ts";
 import { Role, SenderType, TicketStatus } from "../generated/prisma/enums.ts";
+import { humanUserWhere } from "../lib/ai-agent.ts";
 import { isPolishConfigured, polishReply } from "../lib/polish-reply.ts";
 import { isSummaryConfigured, summarizeTicket } from "../lib/summarize-ticket.ts";
 import { sendValidationError } from "../lib/validation.ts";
@@ -116,6 +117,16 @@ ticketsRouter.get("/:id", async (req, res) => {
 
 // Changes status, category and/or assignee; omitted fields are left as they are, null clears.
 // The assignee must be an active agent. Returns the updated ticket in the detail shape.
+const resolvedStatuses: TicketStatus[] = [TicketStatus.RESOLVED, TicketStatus.CLOSED];
+
+// resolvedAt for a status change: stamped when a ticket becomes RESOLVED/CLOSED from an unresolved status,
+// kept between RESOLVED and CLOSED, cleared when it reopens. undefined leaves it unchanged.
+function resolvedAtChange(from: TicketStatus, to: TicketStatus | undefined): Date | null | undefined {
+  if (to === undefined || to === from) return undefined;
+  if (!resolvedStatuses.includes(to)) return null;
+  return resolvedStatuses.includes(from) ? undefined : new Date();
+}
+
 ticketsRouter.patch("/:id", async (req, res) => {
   const parsedId = ticketIdSchema.safeParse(req.params.id);
   if (!parsedId.success) {
@@ -130,13 +141,15 @@ ticketsRouter.patch("/:id", async (req, res) => {
   const id = parsedId.data;
   const { status, category, assignedToId } = parsed.data;
 
-  if (!(await prisma.ticket.findUnique({ where: { id }, select: { id: true } }))) {
+  const current = await prisma.ticket.findUnique({ where: { id }, select: { status: true } });
+  if (!current) {
     res.status(404).json({ error: "Ticket not found" });
     return;
   }
   if (assignedToId != null) {
+    // The AI Agent only gets tickets through auto-resolution
     const assignee = await prisma.user.findFirst({
-      where: { id: assignedToId, role: Role.AGENT, deletedAt: null },
+      where: { id: assignedToId, role: Role.AGENT, deletedAt: null, ...humanUserWhere },
       select: { id: true },
     });
     if (!assignee) {
@@ -148,7 +161,7 @@ ticketsRouter.patch("/:id", async (req, res) => {
 
   const ticket = await prisma.ticket.update({
     where: { id },
-    data: { status, category, assignedToId },
+    data: { status, category, assignedToId, resolvedAt: resolvedAtChange(current.status, status) },
     select: ticketDetailSelect,
   });
   res.json({ ticket });

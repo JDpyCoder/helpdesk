@@ -3,6 +3,7 @@ import express, { type NextFunction, type Request, type Response } from "express
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { Role } from "../generated/prisma/enums.ts";
+import { AI_AGENT_EMAIL } from "../lib/ai-agent.ts";
 
 // Unit tests for DELETE /api/users/:id. Prisma, the session check and Better Auth are mocked,
 // so no database or auth instance is needed.
@@ -94,7 +95,7 @@ describe("DELETE /api/users/:id", () => {
 
     expect(res.status).toBe(404);
     expect(findUser).toHaveBeenCalledWith({
-      where: { id: "missing", deletedAt: null },
+      where: { id: "missing", deletedAt: null, email: { not: AI_AGENT_EMAIL } },
       select: { email: true, role: true },
     });
     expect(updateTickets).not.toHaveBeenCalled();

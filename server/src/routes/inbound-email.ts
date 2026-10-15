@@ -3,6 +3,7 @@ import { Router } from "express";
 import { prisma } from "../db.ts";
 import { Prisma } from "../generated/prisma/client.ts";
 import { SenderType, TicketStatus } from "../generated/prisma/enums.ts";
+import { getAiAgentId } from "../lib/ai-agent.ts";
 import { isAutoResolveConfigured } from "../lib/auto-resolve-ticket.ts";
 import { enqueueTicketAutoResolution, enqueueTicketClassification } from "../lib/jobs.ts";
 import { sendValidationError } from "../lib/validation.ts";
@@ -57,16 +58,29 @@ inboundEmailRouter.post("/", async (req, res) => {
         : null;
 
     if (parent) {
-      // The customer wrote back, so a resolved or closed ticket needs attention again
-      await prisma.ticket.update({
-        where: { id: parent.ticketId },
-        data: { status: TicketStatus.OPEN, messages: { create: message } },
-      });
+      // The customer wrote back, so a resolved or closed ticket needs attention again — from a person,
+      // so a ticket the AI resolved leaves the AI Agent
+      const aiAgentId = await getAiAgentId();
+      await prisma.$transaction([
+        prisma.ticket.update({
+          where: { id: parent.ticketId },
+          data: { status: TicketStatus.OPEN, resolvedAt: null, messages: { create: message } },
+        }),
+        ...(aiAgentId
+          ? [
+              prisma.ticket.updateMany({
+                where: { id: parent.ticketId, assignedToId: aiAgentId },
+                data: { assignedToId: null },
+              }),
+            ]
+          : []),
+      ]);
       res.json({ ticketId: parent.ticketId, created: false });
       return;
     }
 
     // With a knowledge base, the ticket starts NEW and the AI tries to answer it first (see auto-resolve-ticket.ts)
+    // and the ticket belongs to the AI Agent until it is resolved or released
     const autoResolve = isAutoResolveConfigured();
     const ticket = await prisma.ticket.create({
       data: {
@@ -74,6 +88,7 @@ inboundEmailRouter.post("/", async (req, res) => {
         fromEmail: from.email,
         fromName: from.name,
         status: autoResolve ? TicketStatus.NEW : TicketStatus.OPEN,
+        assignedToId: autoResolve ? await getAiAgentId() : null,
         messages: { create: message },
       },
       select: { id: true },

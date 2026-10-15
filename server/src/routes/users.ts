@@ -3,6 +3,7 @@ import { Router, type Response } from "express";
 import { auth } from "../auth.ts";
 import { prisma } from "../db.ts";
 import { Role } from "../generated/prisma/enums.ts";
+import { humanUserWhere } from "../lib/ai-agent.ts";
 import { sendValidationError } from "../lib/validation.ts";
 import { requireAdmin } from "../middleware/requireAdmin.ts";
 import { requireAuth, type AuthLocals } from "../middleware/requireAuth.ts";
@@ -15,9 +16,12 @@ usersRouter.use(requireAuth, requireAdmin);
 // Explicit select: never leak sessions, accounts, or password hashes
 const userSelect = { id: true, name: true, email: true, role: true, createdAt: true } as const;
 
+// People only: soft-deleted users and the AI Agent (not a real account) are left out, and act as not found
+const activeUserWhere = { deletedAt: null, ...humanUserWhere };
+
 usersRouter.get("/", async (_req, res) => {
   const users = await prisma.user.findMany({
-    where: { deletedAt: null },
+    where: activeUserWhere,
     select: userSelect,
     orderBy: { createdAt: "asc" },
   });
@@ -64,7 +68,7 @@ usersRouter.patch("/:id", async (req, res: Response<unknown, AuthLocals>) => {
   const { name, email, password } = parsed.data;
   const { id } = req.params;
 
-  if (!(await prisma.user.findFirst({ where: { id, deletedAt: null }, select: { id: true } }))) {
+  if (!(await prisma.user.findFirst({ where: { id, ...activeUserWhere }, select: { id: true } }))) {
     res.status(404).json({ error: "User not found" });
     return;
   }
@@ -97,7 +101,7 @@ usersRouter.patch("/:id", async (req, res: Response<unknown, AuthLocals>) => {
 // Their tickets are unassigned so they go back to the pool instead of sitting with someone who is gone.
 usersRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
-  const user = await prisma.user.findFirst({ where: { id, deletedAt: null }, select: { email: true, role: true } });
+  const user = await prisma.user.findFirst({ where: { id, ...activeUserWhere }, select: { email: true, role: true } });
   if (!user) {
     res.status(404).json({ error: "User not found" });
     return;

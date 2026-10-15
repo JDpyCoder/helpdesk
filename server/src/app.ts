@@ -7,6 +7,7 @@ import { requireAuth, type AuthLocals } from "./middleware/requireAuth.ts";
 import { requireInboundSecret } from "./middleware/requireInboundSecret.ts";
 import { inboundEmailRouter } from "./routes/inbound-email.ts";
 import { agentsRouter } from "./routes/agents.ts";
+import { dashboardRouter } from "./routes/dashboard.ts";
 import { ticketsRouter } from "./routes/tickets.ts";
 import { usersRouter } from "./routes/users.ts";
 
@@ -65,6 +66,7 @@ app.get("/api/me", requireAuth, (_req, res: Response<unknown, AuthLocals>) => {
 app.use("/api/users", usersRouter);
 app.use("/api/tickets", ticketsRouter);
 app.use("/api/agents", agentsRouter);
+app.use("/api/dashboard", dashboardRouter);
 
 // 404 for unknown API routes
 app.use("/api", (req, res) => {

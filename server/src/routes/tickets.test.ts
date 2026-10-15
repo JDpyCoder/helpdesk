@@ -2,7 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, mock, spyOn } fro
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { Role, SenderType } from "../generated/prisma/enums.ts";
+import { Role, SenderType, TicketStatus } from "../generated/prisma/enums.ts";
+import { AI_AGENT_EMAIL } from "../lib/ai-agent.ts";
 
 // Unit tests for GET /api/tickets (hiding PROCESSING tickets), PATCH /api/tickets/:id assignee validation, POST /api/tickets/:id/replies (and polish)
 // and POST /api/tickets/:id/summary.
@@ -105,7 +106,7 @@ describe("PATCH /api/tickets/:id assignee", () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ticket: updatedTicket });
     expect(findUser).toHaveBeenCalledWith({
-      where: { id: "agent-1", role: Role.AGENT, deletedAt: null },
+      where: { id: "agent-1", role: Role.AGENT, deletedAt: null, email: { not: AI_AGENT_EMAIL } },
       select: { id: true },
     });
     expect(updateTicket).toHaveBeenCalledTimes(1);
@@ -174,6 +175,34 @@ describe("PATCH /api/tickets/:id assignee", () => {
     expect(await res.json()).toEqual({ error: "Ticket not found" });
     expect(findUser).not.toHaveBeenCalled();
     expect(updateTicket).not.toHaveBeenCalled();
+  });
+});
+
+describe("PATCH /api/tickets/:id resolvedAt", () => {
+  async function resolvedAtAfter(from: TicketStatus, body: Record<string, unknown>) {
+    findTicket.mockResolvedValue({ status: from });
+    updateTicket.mockResolvedValue(updatedTicket);
+    const res = await patch(1, body);
+    expect(res.status).toBe(200);
+    return updateTicket.mock.calls[0]?.[0].data.resolvedAt;
+  }
+
+  it.each([TicketStatus.RESOLVED, TicketStatus.CLOSED])("stamps it when an open ticket becomes %s", async (to) => {
+    expect(await resolvedAtAfter(TicketStatus.OPEN, { status: to })).toBeInstanceOf(Date);
+  });
+
+  it("keeps it between RESOLVED and CLOSED", async () => {
+    expect(await resolvedAtAfter(TicketStatus.RESOLVED, { status: TicketStatus.CLOSED })).toBeUndefined();
+  });
+
+  it("clears it when the ticket reopens", async () => {
+    expect(await resolvedAtAfter(TicketStatus.CLOSED, { status: TicketStatus.OPEN })).toBeNull();
+  });
+
+  it("leaves it alone when the status is unchanged or not sent", async () => {
+    expect(await resolvedAtAfter(TicketStatus.RESOLVED, { status: TicketStatus.RESOLVED })).toBeUndefined();
+    updateTicket.mockReset();
+    expect(await resolvedAtAfter(TicketStatus.RESOLVED, { category: null })).toBeUndefined();
   });
 });
 
