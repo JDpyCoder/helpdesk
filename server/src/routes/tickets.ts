@@ -1,8 +1,16 @@
-import { createReplySchema, listTicketsQuerySchema, ticketIdSchema, UNCLASSIFIED, updateTicketSchema } from "core";
+import {
+  createReplySchema,
+  listTicketsQuerySchema,
+  polishReplySchema,
+  ticketIdSchema,
+  UNCLASSIFIED,
+  updateTicketSchema,
+} from "core";
 import { type Response, Router } from "express";
 import { prisma } from "../db.ts";
 import type { Prisma } from "../generated/prisma/client.ts";
 import { Role, SenderType } from "../generated/prisma/enums.ts";
+import { isPolishConfigured, polishReply } from "../lib/polish-reply.ts";
 import { sendValidationError } from "../lib/validation.ts";
 import { type AuthLocals, requireAuth } from "../middleware/requireAuth.ts";
 
@@ -183,4 +191,54 @@ ticketsRouter.post("/:id/replies", async (req, res: Response<unknown, AuthLocals
     select: ticketDetailSelect,
   });
   res.status(201).json({ ticket });
+});
+
+// Improves a reply draft with Gemini (greeting the customer, signed by the signed-in agent) and returns { body };
+// nothing is saved, the agent still sends it
+ticketsRouter.post("/:id/replies/polish", async (req, res: Response<unknown, AuthLocals>) => {
+  const parsedId = ticketIdSchema.safeParse(req.params.id);
+  if (!parsedId.success) {
+    sendValidationError(res, parsedId.error);
+    return;
+  }
+  const parsed = polishReplySchema.safeParse(req.body);
+  if (!parsed.success) {
+    sendValidationError(res, parsed.error);
+    return;
+  }
+  if (!isPolishConfigured()) {
+    res.status(503).json({ error: "Reply polishing is not configured" });
+    return;
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: parsedId.data },
+    select: {
+      subject: true,
+      fromName: true,
+      messages: {
+        select: { senderType: true, fromName: true, body: true },
+        orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+      },
+    },
+  });
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  let body: string;
+  try {
+    body = await polishReply(parsed.data.body, {
+      subject: ticket.subject,
+      customerName: ticket.fromName,
+      agentName: res.locals.user.name,
+      messages: ticket.messages,
+    });
+  } catch (err) {
+    console.error("Polishing a reply failed:", err);
+    res.status(502).json({ error: "The AI service could not polish the reply. Try again." });
+    return;
+  }
+  res.json({ body });
 });

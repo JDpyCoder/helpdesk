@@ -56,7 +56,7 @@ test.describe('Delete user dialog', () => {
 
     const dialog = await openDeleteDialog(page, agent)
     await expect(dialog).toContainText(
-      `Delete ${agent.name} (${agent.email})? They will be signed out and can no longer sign in.`,
+      `Delete ${agent.name} (${agent.email})? They will be signed out and can no longer sign in, and their tickets will be unassigned.`,
     )
     await dialog.getByRole('button', { name: 'Delete', exact: true }).click()
 

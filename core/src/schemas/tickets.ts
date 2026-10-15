@@ -77,16 +77,24 @@ export const updateTicketSchema = z
 
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
 
+// Shortest reply (after trimming) the API accepts; the client keeps Polish and Send reply disabled below it
+export const REPLY_MIN_LENGTH = 5;
+
 // POST /api/tickets/:id/replies body: an agent's reply to the customer
 export const createReplySchema = z.object({
   body: z
     .string()
     .trim()
-    .min(1, "Reply cannot be empty")
+    .min(REPLY_MIN_LENGTH, `Reply must be at least ${REPLY_MIN_LENGTH} characters`)
     .max(10000, "Reply must be at most 10,000 characters"),
 });
 
 export type CreateReplyInput = z.infer<typeof createReplySchema>;
+
+// Body of POST /api/tickets/:id/replies/polish: the draft to improve, with the same rules as a reply
+export const polishReplySchema = createReplySchema;
+
+export type PolishReplyInput = z.infer<typeof polishReplySchema>;
 
 // :id in /api/tickets/:id (and the client's /tickets/:id route): a positive integer ticket id
 export const ticketIdSchema = z.coerce

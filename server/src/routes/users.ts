@@ -94,6 +94,7 @@ usersRouter.patch("/:id", async (req, res: Response<unknown, AuthLocals>) => {
 
 // Soft delete: the row stays, but the user leaves the list, can't sign in and is signed out now.
 // The email is rewritten to a tombstone so the address can be reused; admins can't be deleted.
+// Their tickets are unassigned so they go back to the pool instead of sitting with someone who is gone.
 usersRouter.delete("/:id", async (req, res) => {
   const { id } = req.params;
   const user = await prisma.user.findFirst({ where: { id, deletedAt: null }, select: { email: true, role: true } });
@@ -109,6 +110,7 @@ usersRouter.delete("/:id", async (req, res) => {
   await prisma.$transaction([
     prisma.user.update({ where: { id }, data: { deletedAt: new Date(), email: `deleted+${id}+${user.email}` } }),
     prisma.session.deleteMany({ where: { userId: id } }),
+    prisma.ticket.updateMany({ where: { assignedToId: id }, data: { assignedToId: null } }),
   ]);
   res.status(204).end();
 });

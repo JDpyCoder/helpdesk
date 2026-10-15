@@ -39,7 +39,7 @@ describe('DeleteUserDialog', () => {
 
     expect(
       within(dialog).getByText(
-        'Delete Alan Agent (alan@example.com)? They will be signed out and can no longer sign in.'
+        'Delete Alan Agent (alan@example.com)? They will be signed out and can no longer sign in, and their tickets will be unassigned.'
       )
     ).toBeInTheDocument()
     expect(within(dialog).getByRole('button', { name: 'Cancel' })).toBeInTheDocument()
@@ -56,7 +56,7 @@ describe('DeleteUserDialog', () => {
     expect(mockDelete).not.toHaveBeenCalled()
   })
 
-  it('deletes the user, refreshes the user list and closes', async () => {
+  it('deletes the user, refreshes the user and ticket lists and closes', async () => {
     mockDelete.mockResolvedValue({ data: '' })
     const { queryClient } = renderWithQuery(<DeleteUserDialog user={agent} />)
     const invalidate = vi.spyOn(queryClient, 'invalidateQueries')
@@ -67,6 +67,8 @@ describe('DeleteUserDialog', () => {
     await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
     expect(mockDelete).toHaveBeenCalledWith('/api/users/u2')
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ['users'] })
+    // Their tickets were unassigned on the server
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['tickets'] })
   })
 
   it("shows the server's error message and stays open", async () => {

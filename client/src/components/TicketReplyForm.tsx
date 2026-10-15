@@ -1,9 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import axios from 'axios'
-import { type CreateReplyInput, createReplySchema } from 'core'
-import { AlertCircle, Loader2, Send } from 'lucide-react'
-import { Controller, useForm } from 'react-hook-form'
+import { type CreateReplyInput, createReplySchema, type PolishReplyInput, REPLY_MIN_LENGTH } from 'core'
+import { AlertCircle, Loader2, Send, Sparkles } from 'lucide-react'
+import { Controller, useForm, useWatch } from 'react-hook-form'
 import { Alert, AlertDescription } from '@/components/ui/alert.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field.tsx'
@@ -13,7 +13,8 @@ import type { TicketDetail } from '@/pages/TicketDetailPage.tsx'
 
 const replyDefaults: CreateReplyInput = { body: '' }
 
-// Sends an agent's reply with POST /api/tickets/:id/replies; the reply joins the thread above
+// Sends an agent's reply with POST /api/tickets/:id/replies; the reply joins the thread above.
+// "Polish" rewrites the draft with AI (POST /api/tickets/:id/replies/polish) and puts the result back in the box.
 function TicketReplyForm({ ticketId }: { ticketId: number }) {
   const queryClient = useQueryClient()
   const form = useForm<CreateReplyInput>({
@@ -37,6 +38,30 @@ function TicketReplyForm({ ticketId }: { ticketId: number }) {
     },
   })
 
+  const polishReply = useMutation({
+    mutationFn: (values: PolishReplyInput) =>
+      axios.post<{ body: string }>(`/api/tickets/${ticketId}/replies/polish`, values).then((res) => res.data.body),
+    onSuccess: (body) => {
+      form.setValue('body', body, { shouldDirty: true, shouldValidate: true })
+    },
+    onError: (error) => {
+      // The draft is left as it was
+      form.setError('root.serverError', { message: `Could not polish reply (${updateErrorMessage(error)}).` })
+    },
+  })
+
+  const busy = sendReply.isPending || polishReply.isPending
+  // Polish and Send reply stay disabled until the draft is long enough, instead of showing a length error
+  const hasReply = useWatch({ control: form.control, name: 'body' }).trim().length >= REPLY_MIN_LENGTH
+
+  async function polish() {
+    form.clearErrors('root.serverError')
+    // Same rules as sending: a too-long draft shows its field error instead
+    if (await form.trigger('body')) {
+      polishReply.mutate({ body: form.getValues('body') })
+    }
+  }
+
   return (
     <form onSubmit={form.handleSubmit((values) => sendReply.mutate(values))} noValidate>
       <FieldGroup>
@@ -58,7 +83,7 @@ function TicketReplyForm({ ticketId }: { ticketId: number }) {
                 id="ticket-reply-body"
                 placeholder="Write a reply to the customer…"
                 className="min-h-28"
-                disabled={sendReply.isPending}
+                disabled={busy}
                 aria-invalid={fieldState.invalid}
               />
               {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
@@ -66,8 +91,12 @@ function TicketReplyForm({ ticketId }: { ticketId: number }) {
           )}
         />
 
-        <div className="flex justify-end">
-          <Button type="submit" disabled={sendReply.isPending}>
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="outline" onClick={polish} disabled={busy || !hasReply}>
+            {polishReply.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
+            {polishReply.isPending ? 'Polishing…' : 'Polish'}
+          </Button>
+          <Button type="submit" disabled={busy || !hasReply}>
             {sendReply.isPending ? <Loader2 className="animate-spin" /> : <Send />}
             {sendReply.isPending ? 'Sending…' : 'Send reply'}
           </Button>

@@ -26,7 +26,11 @@ function DeleteUserDialog({ user }: { user: User }) {
   const deleteUser = useMutation({
     mutationFn: () => axios.delete(`/api/users/${user.id}`),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['users'] })
+      // The server also unassigns the user's tickets, so cached ticket lists and details are stale
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['users'] }),
+        queryClient.invalidateQueries({ queryKey: ['tickets'] }),
+      ])
       handleOpenChange(false)
     },
   })
@@ -67,7 +71,8 @@ function DeleteUserDialog({ user }: { user: User }) {
         <AlertDialogHeader>
           <AlertDialogTitle>Delete user</AlertDialogTitle>
           <AlertDialogDescription>
-            Delete {user.name} ({user.email})? They will be signed out and can no longer sign in.
+            Delete {user.name} ({user.email})? They will be signed out and can no longer sign in, and their
+            tickets will be unassigned.
           </AlertDialogDescription>
         </AlertDialogHeader>
         {deleteUser.error && (
