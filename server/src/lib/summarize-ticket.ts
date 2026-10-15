@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { SenderType } from "../generated/prisma/enums.ts";
-import { geminiModel, isGeminiConfigured } from "./gemini.ts";
+import { geminiModel, isGeminiConfigured, senderLabels } from "./gemini.ts";
 
 // A summary covers the whole thread, so it sees more messages than polishing does; each is still capped
 const MAX_CONTEXT_MESSAGES = 30;
@@ -31,7 +31,7 @@ function conversation(context: SummaryContext) {
   const omitted = context.messages.length - messages.length;
   const lines = messages.map(
     (m) =>
-      `[${m.senderType === SenderType.AGENT ? "Agent" : "Customer"} ${m.fromName}, ${m.receivedAt.toISOString()}]\n${m.body.slice(0, MAX_CONTEXT_CHARS)}`,
+      `[${senderLabels[m.senderType]} ${m.fromName}, ${m.receivedAt.toISOString()}]\n${m.body.slice(0, MAX_CONTEXT_CHARS)}`,
   );
   return [...(omitted > 0 ? [`(${omitted} earlier messages omitted)`] : []), ...lines].join("\n\n");
 }

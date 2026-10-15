@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { createReplySchema, polishReplySchema, REPLY_MIN_LENGTH } from "./tickets.ts";
+import { createReplySchema, polishReplySchema, REPLY_MIN_LENGTH, updateTicketSchema } from "./tickets.ts";
 
 // The reply length rules shared by POST /api/tickets/:id/replies, .../replies/polish and the client's reply form
 describe("createReplySchema", () => {
@@ -48,5 +48,20 @@ describe("polishReplySchema", () => {
   it("applies the same minimum as a reply", () => {
     expect(polishReplySchema.safeParse({ body: "Okay" }).success).toBe(false);
     expect(polishReplySchema.safeParse({ body: " On it " })).toEqual({ success: true, data: { body: "On it" } });
+  });
+});
+
+// The statuses PATCH /api/tickets/:id accepts
+describe("updateTicketSchema status", () => {
+  it("accepts the statuses an agent can set", () => {
+    for (const status of ["OPEN", "RESOLVED", "CLOSED"]) {
+      expect(updateTicketSchema.safeParse({ status }).success).toBe(true);
+    }
+  });
+
+  it("rejects NEW and PROCESSING, which only AI auto-resolution sets", () => {
+    for (const status of ["NEW", "PROCESSING"]) {
+      expect(updateTicketSchema.safeParse({ status }).success).toBe(false);
+    }
   });
 });

@@ -43,10 +43,14 @@ import {
   DEFAULT_TICKET_PAGE_SIZE,
   TICKET_PAGE_SIZES,
   ticketCategorySchema,
+  TicketStatus,
   ticketStatusSchema,
   UNCLASSIFIED,
 } from 'core'
-import type { SortOrder, TicketCategory, TicketCategoryFilter, TicketSortField, TicketStatus } from 'core'
+import type { SortOrder, TicketCategory, TicketCategoryFilter, TicketSortField } from 'core'
+
+// The list never shows PROCESSING tickets (the AI is answering them), so they can't be filtered for
+const listedStatuses = ticketStatusSchema.options.filter((status) => status !== TicketStatus.PROCESSING)
 
 export type TicketListItem = {
   id: number
@@ -394,7 +398,7 @@ function TicketFilters({
           onChange={(e) => onStatusChange(e.target.value)}
         >
           <NativeSelectOption value="">All statuses</NativeSelectOption>
-          {ticketStatusSchema.options.map((value) => (
+          {listedStatuses.map((value) => (
             <NativeSelectOption key={value} value={value}>
               {statusLabels[value]}
             </NativeSelectOption>

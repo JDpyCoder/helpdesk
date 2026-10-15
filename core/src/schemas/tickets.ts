@@ -2,17 +2,22 @@ import { z } from "zod";
 
 // Must match the TicketStatus / TicketCategory enums in server/prisma/schema.prisma.
 // Each name is both the value (TicketStatus.OPEN) and the type.
-export const ticketStatusSchema = z.enum(["OPEN", "RESOLVED", "CLOSED"]);
+export const ticketStatusSchema = z.enum(["NEW", "PROCESSING", "OPEN", "RESOLVED", "CLOSED"]);
 export const TicketStatus = ticketStatusSchema.enum;
 export type TicketStatus = z.infer<typeof ticketStatusSchema>;
+
+// The statuses an agent can set. NEW and PROCESSING belong to AI auto-resolution: a ticket set to PROCESSING
+// by hand would disappear from the ticket list.
+export const agentTicketStatusSchema = ticketStatusSchema.exclude(["NEW", "PROCESSING"]);
+export type AgentTicketStatus = z.infer<typeof agentTicketStatusSchema>;
 
 export const ticketCategorySchema = z.enum(["GENERAL_QUESTION", "TECHNICAL_QUESTION", "REFUND_REQUEST"]);
 export const TicketCategory = ticketCategorySchema.enum;
 export type TicketCategory = z.infer<typeof ticketCategorySchema>;
 
 // Must match the SenderType enum in server/prisma/schema.prisma: who wrote a ticket message,
-// the customer (inbound email) or an agent (a reply from the app)
-export const senderTypeSchema = z.enum(["CUSTOMER", "AGENT"]);
+// the customer (inbound email), an agent (a reply from the app) or the AI (an automatic answer)
+export const senderTypeSchema = z.enum(["CUSTOMER", "AGENT", "AI"]);
 export const SenderType = senderTypeSchema.enum;
 export type SenderType = z.infer<typeof senderTypeSchema>;
 
@@ -67,7 +72,7 @@ export type ListTicketsQuery = z.infer<typeof listTicketsQuerySchema>;
 // PATCH /api/tickets/:id body. Omitted fields are left unchanged; null clears category or assignee.
 export const updateTicketSchema = z
   .object({
-    status: ticketStatusSchema.optional(),
+    status: agentTicketStatusSchema.optional(),
     category: ticketCategorySchema.nullable().optional(),
     assignedToId: z.string().min(1).nullable().optional(),
   })

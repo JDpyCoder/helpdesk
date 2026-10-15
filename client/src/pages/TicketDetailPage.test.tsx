@@ -150,6 +150,24 @@ describe('TicketDetailPage', () => {
     expect(within(replies[1]).getByText('Agent')).toBeInTheDocument()
   })
 
+  it('marks an automatic answer from the AI', async () => {
+    const aiReply = {
+      id: 4,
+      senderType: 'AI',
+      author: null,
+      fromEmail: 'support@example.com',
+      fromName: 'AI Assistant',
+      body: 'Go to the login page and click Forgot Password.',
+      receivedAt: '2026-10-02T09:31:00.000Z',
+    }
+    mockApi({ ...ticket, status: 'RESOLVED', messages: [ticket.messages[0], aiReply] })
+    renderPage()
+
+    const reply = await screen.findByRole('listitem', { name: 'Message from AI Assistant' })
+    expect(within(reply).getByText('AI')).toBeInTheDocument()
+    expect(within(reply).getByText('Go to the login page and click Forgot Password.')).toBeInTheDocument()
+  })
+
   it('says there are no replies when the ticket has only its first message', async () => {
     mockApi({ ...ticket, messages: [ticket.messages[0]] })
     renderPage()

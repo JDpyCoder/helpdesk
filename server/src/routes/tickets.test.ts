@@ -4,17 +4,20 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { Role, SenderType } from "../generated/prisma/enums.ts";
 
-// Unit tests for PATCH /api/tickets/:id assignee validation, POST /api/tickets/:id/replies (and polish)
+// Unit tests for GET /api/tickets (hiding PROCESSING tickets), PATCH /api/tickets/:id assignee validation, POST /api/tickets/:id/replies (and polish)
 // and POST /api/tickets/:id/summary.
 // Prisma and the session check are mocked, so no database or Better Auth instance is needed.
 const findTicket = mock();
 const findUser = mock();
 const updateTicket = mock();
+const findTickets = mock();
+const countTickets = mock();
 const sessionUser = { id: "agent-1", name: "Alan Agent", email: "alan@example.com" };
 
 mock.module("../db.ts", () => ({
   prisma: {
-    ticket: { findUnique: findTicket, update: updateTicket },
+    ticket: { findUnique: findTicket, update: updateTicket, findMany: findTickets, count: countTickets },
+    $transaction: (queries: Promise<unknown>[]) => Promise.all(queries),
     user: { findFirst: findUser },
   },
 }));
@@ -59,6 +62,8 @@ afterEach(() => {
   findTicket.mockReset();
   findUser.mockReset();
   updateTicket.mockReset();
+  findTickets.mockReset();
+  countTickets.mockReset();
   polishReply.mockReset();
   isPolishConfigured.mockReset();
   isPolishConfigured.mockImplementation(() => true);
@@ -74,6 +79,20 @@ function patch(id: string | number, body: unknown) {
     body: JSON.stringify(body),
   });
 }
+
+describe("GET /api/tickets", () => {
+  it("leaves out PROCESSING tickets (the AI is answering them), in the page and the total", async () => {
+    findTickets.mockResolvedValue([]);
+    countTickets.mockResolvedValue(0);
+
+    const res = await fetch(`${baseUrl}?status=OPEN&search=refund`);
+
+    expect(res.status).toBe(200);
+    const [findArgs] = findTickets.mock.calls[0]!;
+    expect(findArgs.where).toMatchObject({ status: { equals: "OPEN", not: "PROCESSING" } });
+    expect(countTickets).toHaveBeenCalledWith({ where: findArgs.where });
+  });
+});
 
 describe("PATCH /api/tickets/:id assignee", () => {
   it("assigns the ticket to an active agent", async () => {

@@ -167,12 +167,12 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
   )
 }
 
-// One message in the conversation; agent replies are tinted so the two sides are easy to tell apart
+// One message in the conversation; agent and AI replies are tinted so the two sides are easy to tell apart
 function MessageItem({ message, as: Tag = 'article' }: { message: TicketMessage; as?: 'article' | 'li' }) {
   return (
     <Tag
       aria-label={`Message from ${message.fromName}`}
-      className={cn('rounded-lg border p-4', message.senderType === SenderType.AGENT && 'bg-muted/50')}
+      className={cn('rounded-lg border p-4', message.senderType !== SenderType.CUSTOMER && 'bg-muted/50')}
     >
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">

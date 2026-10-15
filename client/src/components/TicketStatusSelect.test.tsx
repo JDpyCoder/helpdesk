@@ -34,7 +34,17 @@ afterEach(() => {
 })
 
 describe('TicketStatusSelect', () => {
-  it('offers every status, with the current one selected', () => {
+  it('shows an AI status as the current one without offering it', () => {
+    renderWithQuery(<TicketStatusSelect ticket={{ ...ticket, status: 'PROCESSING' }} />)
+
+    expect(select()).toHaveDisplayValue('Processing')
+    const options = within(select()).getAllByRole('option')
+    expect(options.map((option) => option.textContent)).toEqual(['Processing', 'Open', 'Resolved', 'Closed'])
+    expect(options[0]).toBeDisabled()
+    expect(options.slice(1).every((option) => !(option as HTMLOptionElement).disabled)).toBe(true)
+  })
+
+  it('offers the statuses an agent can set, with the current one selected', () => {
     renderWithQuery(<TicketStatusSelect ticket={{ ...ticket, status: 'RESOLVED' }} />)
 
     const options = within(select()).getAllByRole('option')

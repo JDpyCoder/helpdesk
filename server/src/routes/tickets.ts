@@ -9,7 +9,7 @@ import {
 import { type Response, Router } from "express";
 import { prisma } from "../db.ts";
 import type { Prisma } from "../generated/prisma/client.ts";
-import { Role, SenderType } from "../generated/prisma/enums.ts";
+import { Role, SenderType, TicketStatus } from "../generated/prisma/enums.ts";
 import { isPolishConfigured, polishReply } from "../lib/polish-reply.ts";
 import { isSummaryConfigured, summarizeTicket } from "../lib/summarize-ticket.ts";
 import { sendValidationError } from "../lib/validation.ts";
@@ -58,7 +58,8 @@ ticketsRouter.get("/", async (req, res) => {
   const { status, category, search, sortBy, order, page, pageSize } = parsed.data;
 
   const where: Prisma.TicketWhereInput = {
-    status,
+    // A ticket the AI is answering (PROCESSING) appears once it is RESOLVED or handed over as OPEN
+    status: { equals: status, not: TicketStatus.PROCESSING },
     category: category === UNCLASSIFIED ? null : category,
     ...(search && searchWhere(search)),
   };

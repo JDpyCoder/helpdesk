@@ -12,7 +12,12 @@ enum Role {
   AGENT
 }
 
+// A new ticket starts as NEW when the AI will try to answer it from the knowledge base, is PROCESSING while
+// it does (hidden from the ticket list), then becomes RESOLVED or OPEN for an agent. Without the AI, tickets
+// start OPEN. Agents only set OPEN, RESOLVED and CLOSED.
 enum TicketStatus {
+  NEW
+  PROCESSING
   OPEN
   RESOLVED
   CLOSED
@@ -24,10 +29,12 @@ enum TicketCategory {
   REFUND_REQUEST
 }
 
-// Who wrote a ticket message: the customer (inbound email) or an agent (a reply from the app)
+// Who wrote a ticket message: the customer (inbound email), an agent (a reply from the app) or the AI
+// (an automatic answer from the knowledge base)
 enum SenderType {
   CUSTOMER
   AGENT
+  AI
 }
 
 model User {

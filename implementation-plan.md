@@ -39,7 +39,8 @@
 - [x] Implement auto-classification endpoint (categorize incoming tickets)
 - [x] Implement AI summary endpoint (generate ticket summary)
 - [ ] Implement AI suggested reply endpoint
-- [ ] Build knowledge base structure and seed with initial content
+- [x] Build knowledge base structure and seed with initial content
+- [x] Auto-resolve new tickets from the knowledge base (NEW → PROCESSING → RESOLVED or OPEN; PROCESSING hidden from the list)
 - [ ] Integrate AI features into ticket detail page UI
 
 ## Phase 6: Email Integration

@@ -254,7 +254,8 @@ describe('TicketsPage', () => {
       expect(status).toHaveValue('')
       expect(category).toHaveValue('')
       expect(within(status).getAllByRole('option').map((o) => o.textContent)).toEqual(
-        ['All statuses', 'Open', 'Resolved', 'Closed'],
+        // No Processing: those tickets (the AI is answering them) never appear in the list
+        ['All statuses', 'New', 'Open', 'Resolved', 'Closed'],
       )
       expect(within(category).getAllByRole('option').map((o) => o.textContent)).toEqual(
         ['All categories', 'General Question', 'Technical Question', 'Refund Request', 'Unclassified'],

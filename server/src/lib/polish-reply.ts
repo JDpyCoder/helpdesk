@@ -1,6 +1,6 @@
 import { generateText } from "ai";
 import { SenderType } from "../generated/prisma/enums.ts";
-import { geminiModel, isGeminiConfigured } from "./gemini.ts";
+import { geminiModel, isGeminiConfigured, senderLabels } from "./gemini.ts";
 
 // Linked under the agent's name in every polished reply
 export const HELPDESK_URL = "https://helpdesk.com";
@@ -44,7 +44,7 @@ function withoutSignature(draft: string, agentName: string) {
 function conversation(context: PolishContext) {
   return context.messages
     .slice(-MAX_CONTEXT_MESSAGES)
-    .map((m) => `[${m.senderType === SenderType.AGENT ? "Agent" : "Customer"} ${m.fromName}]\n${m.body.slice(0, MAX_CONTEXT_CHARS)}`)
+    .map((m) => `[${senderLabels[m.senderType]} ${m.fromName}]\n${m.body.slice(0, MAX_CONTEXT_CHARS)}`)
     .join("\n\n");
 }
 

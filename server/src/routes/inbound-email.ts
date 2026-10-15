@@ -3,7 +3,8 @@ import { Router } from "express";
 import { prisma } from "../db.ts";
 import { Prisma } from "../generated/prisma/client.ts";
 import { SenderType, TicketStatus } from "../generated/prisma/enums.ts";
-import { enqueueTicketClassification } from "../lib/jobs.ts";
+import { isAutoResolveConfigured } from "../lib/auto-resolve-ticket.ts";
+import { enqueueTicketAutoResolution, enqueueTicketClassification } from "../lib/jobs.ts";
 import { sendValidationError } from "../lib/validation.ts";
 
 // Inbound email webhook: mounted at /api/inbound-email behind requireInboundSecret (see app.ts).
@@ -65,12 +66,21 @@ inboundEmailRouter.post("/", async (req, res) => {
       return;
     }
 
+    // With a knowledge base, the ticket starts NEW and the AI tries to answer it first (see auto-resolve-ticket.ts)
+    const autoResolve = isAutoResolveConfigured();
     const ticket = await prisma.ticket.create({
-      data: { subject, fromEmail: from.email, fromName: from.name, messages: { create: message } },
+      data: {
+        subject,
+        fromEmail: from.email,
+        fromName: from.name,
+        status: autoResolve ? TicketStatus.NEW : TicketStatus.OPEN,
+        messages: { create: message },
+      },
       select: { id: true },
     });
-    // Only queued here (a quick insert); the pg-boss worker classifies it with Gemini later
+    // Only queued here (quick inserts); the pg-boss workers call Gemini later
     await enqueueTicketClassification(ticket.id);
+    if (autoResolve) await enqueueTicketAutoResolution(ticket.id);
     res.status(201).json({ ticketId: ticket.id, created: true });
   } catch (err) {
     // Two deliveries of the same email raced past the duplicate check; the other one stored it

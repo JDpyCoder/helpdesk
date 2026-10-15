@@ -1,4 +1,4 @@
-import { type TicketStatus, ticketStatusSchema } from 'core'
+import { type AgentTicketStatus, agentTicketStatusSchema } from 'core'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select.tsx'
 import { statusLabels } from '@/lib/ticket-labels.ts'
 import { updateErrorMessage, useUpdateTicket } from '@/lib/use-update-ticket.ts'
@@ -9,6 +9,8 @@ function TicketStatusSelect({ ticket }: { ticket: TicketDetail }) {
   const update = useUpdateTicket(ticket.id)
   // While saving, show the choice being saved rather than snapping back to the old one
   const selected = (update.isPending && update.variables.status) || ticket.status
+  // Agents can't choose NEW or PROCESSING (AI auto-resolution sets them), but a ticket in one still shows it
+  const aiStatus = agentTicketStatusSchema.options.some((status) => status === ticket.status) ? null : ticket.status
 
   return (
     <div className="space-y-1">
@@ -19,9 +21,14 @@ function TicketStatusSelect({ ticket }: { ticket: TicketDetail }) {
         value={selected}
         disabled={update.isPending}
         aria-invalid={update.isError || undefined}
-        onChange={(e) => update.mutate({ status: e.target.value as TicketStatus })}
+        onChange={(e) => update.mutate({ status: e.target.value as AgentTicketStatus })}
       >
-        {ticketStatusSchema.options.map((status) => (
+        {aiStatus && (
+          <NativeSelectOption value={aiStatus} disabled>
+            {statusLabels[aiStatus]}
+          </NativeSelectOption>
+        )}
+        {agentTicketStatusSchema.options.map((status) => (
           <NativeSelectOption key={status} value={status}>
             {statusLabels[status]}
           </NativeSelectOption>
