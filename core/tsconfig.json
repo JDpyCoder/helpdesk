@@ -19,5 +19,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Specs run under bun test and import "bun:test"; keeping them out leaves the shared code free of Bun types
+  "exclude": ["src/**/*.test.ts"]
 }

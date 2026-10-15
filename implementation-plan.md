@@ -37,7 +37,7 @@
 
 - [ ] Set up Claude API integration
 - [ ] Implement auto-classification endpoint (categorize incoming tickets)
-- [ ] Implement AI summary endpoint (generate ticket summary)
+- [x] Implement AI summary endpoint (generate ticket summary)
 - [ ] Implement AI suggested reply endpoint
 - [ ] Build knowledge base structure and seed with initial content
 - [ ] Integrate AI features into ticket detail page UI

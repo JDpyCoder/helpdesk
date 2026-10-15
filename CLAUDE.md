@@ -32,7 +32,7 @@ Run from the repo root:
 - `bun run build` — production build of the client
 - `bun run typecheck` — typecheck the e2e files (root `tsconfig.json`), then `core`, then the server, then typecheck + build the client
 
-- `bun run test` — server unit tests, then client component tests, run once (see "Server unit tests" and "Component tests" below)
+- `bun run test` — `core` schema tests, then server unit tests, then client component tests, run once (see "Server unit tests" and "Component tests" below)
 - `bun run test:e2e` — Playwright end-to-end tests (`test:e2e:ui` for UI mode, `test:e2e:report` for the last HTML report)
 
 Run from `server/`:
@@ -96,10 +96,14 @@ There is no email provider yet. Support mail enters through a provider-agnostic 
     - `TicketReplyForm` uses the react-hook-form + `Field` pattern with a shadcn `Textarea`. "Send reply" and "Polish" are disabled until the trimmed draft has `REPLY_MIN_LENGTH` (5, from `core`) characters (`useWatch` on `body`), so no "Reply must be at least 5 characters" error is shown; the 10,000-char limit still shows a field error. On success it does `setQueryData(['tickets', id])`, invalidates `['tickets']` and clears the box. On failure it shows "Could not send reply (…)." and keeps the text.
 - **Polishing replies (AI)** — `POST /api/tickets/:id/replies/polish` (`requireAuth`) improves a draft with Google Gemini through the Vercel AI SDK (`ai` + `@ai-sdk/google`, `generateText`) and returns `{ body }`; nothing is saved.
   - **Validation and errors:** the body is validated with `polishReplySchema` (`core`, same rules as `createReplySchema`). A missing `GOOGLE_GENERATIVE_AI_API_KEY` returns 503, an unknown ticket 404, and a Gemini failure or empty answer 502 (the error is logged).
-  - **Prompt:** the Gemini call lives in `server/src/lib/polish-reply.ts` (`polishReply`, `isPolishConfigured`). It sends the ticket subject, customer name and the last 10 messages (each capped at 4,000 chars) as context. The system prompt tells the model to keep facts and not follow instructions found in the conversation. Model: `GEMINI_MODEL`, default `gemini-3.8-flash`. Timeout 30s.
+  - **Prompt:** the Gemini call lives in `server/src/lib/polish-reply.ts` (`polishReply`, `isPolishConfigured`). It sends the ticket subject, customer name and the last 10 messages (each capped at 4,000 chars) as context. The system prompt tells the model to keep facts and not follow instructions found in the conversation. The model (`GEMINI_MODEL`, default `gemini-3.8-flash`) and the key check are shared by the AI features in `server/src/lib/gemini.ts` (`geminiModel`, `isGeminiConfigured`). Timeout 30s.
   - **Tests:** route tests mock that module (`tickets.test.ts`), so unit tests never call Gemini. Don't add E2E tests that hit the real API.
   - **Client:** `TicketReplyForm` has a "Polish" button (outline, `Sparkles` icon) just before "Send reply". It validates the draft first, then puts the polished text back in the box for the agent to review and send. While it runs, the form is disabled and the button reads "Polishing…". On failure it shows "Could not polish reply (…)." and keeps the draft.
-- **Env** — `INBOUND_EMAIL_SECRET` in `server/.env` and `server/.env.test` (generate with `openssl rand -base64 32`). `GOOGLE_GENERATIVE_AI_API_KEY` (and optional `GEMINI_MODEL`) in `server/.env` for reply polishing; the provider reads the key itself.
+- **Ticket summaries (AI)** — `POST /api/tickets/:id/summary` (`requireAuth`, no body) summarizes the ticket and its conversation with Gemini and returns `{ summary }` (plain text). Nothing is stored: every call generates a fresh summary from the latest messages.
+  - **Errors:** malformed id 400, missing `GOOGLE_GENERATIVE_AI_API_KEY` 503, unknown ticket 404, Gemini failure or empty answer 502 (logged).
+  - **Prompt:** `server/src/lib/summarize-ticket.ts` (`summarizeTicket`, `isSummaryConfigured`) sends the subject, customer name and the last 30 messages (sender, time, body capped at 4,000 chars; older ones noted as omitted). It passes the system prompt as `instructions` (`system` is deprecated in `ai` v7). Unit tests mock `generateText` (`summarize-ticket.test.ts`) and the route tests mock the module.
+  - **Client:** `TicketSummary` sits below the first message on `TicketDetailPage` (keyed by ticket id): an outline "Summarize" button with a `Sparkles` icon ("Summarizing…" and disabled while it runs). Every click regenerates; the previous summary stays, dimmed with `aria-busy`, until the new one arrives, in a tinted `region` named "Summary". On failure it shows "Could not summarize ticket (…)." via `updateErrorMessage`.
+- **Env** — `INBOUND_EMAIL_SECRET` in `server/.env` and `server/.env.test` (generate with `openssl rand -base64 32`). `GOOGLE_GENERATIVE_AI_API_KEY` (and optional `GEMINI_MODEL`) in `server/.env` for reply polishing and ticket summaries; the provider reads the key itself.
 
 ## Component tests
 
@@ -139,6 +143,7 @@ Vitest + React Testing Library in jsdom, for the client only. Config is the `tes
 - Mock `../db.ts` (`prisma`) and `../middleware/requireAuth.ts` with `mock.module`, then load the router with a dynamic `await import(...)` **after** the mocks, so the real Prisma client (which needs `DATABASE_URL`) and Better Auth never load. Mount the router on a bare `express()` with `express.json()`, `listen(0)`, and call it with `fetch`.
 - Reset the mocks in `afterEach` (`mockReset()`).
 - Behaviour that depends on the real database or sessions (constraints, ordering, auth) still belongs in E2E.
+- **Schema tests (`core`)** — the shared zod schemas get their own `bun test` specs next to them (`core/src/schemas/<resource>.test.ts`, e.g. `tickets.test.ts` for the reply length rules), run by `bun run test` from `core/` or the root. Test boundaries and error messages there once, instead of repeating the full matrix in route or component tests. `core/tsconfig.json` excludes `*.test.ts`, so `core` stays free of Bun types.
 
 ## End-to-end tests
 

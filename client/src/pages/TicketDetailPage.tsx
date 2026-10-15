@@ -7,6 +7,7 @@ import TicketAssigneeSelect from '@/components/TicketAssigneeSelect.tsx'
 import TicketCategorySelect from '@/components/TicketCategorySelect.tsx'
 import TicketReplyForm from '@/components/TicketReplyForm.tsx'
 import TicketStatusSelect from '@/components/TicketStatusSelect.tsx'
+import TicketSummary from '@/components/TicketSummary.tsx'
 import type { TicketListItem } from '@/components/TicketsTable.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
@@ -119,6 +120,8 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
                 Message
               </h2>
               <MessageItem message={original} />
+              {/* Keyed so another ticket's summary never shows on this one */}
+              <TicketSummary key={ticket.id} ticketId={ticket.id} />
             </section>
           )}
           <section aria-labelledby="ticket-replies-heading" className="space-y-4">

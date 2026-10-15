@@ -1,9 +1,6 @@
-import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { SenderType } from "../generated/prisma/enums.ts";
-
-// The Google provider reads GOOGLE_GENERATIVE_AI_API_KEY itself; GEMINI_MODEL overrides the model
-const model = process.env.GEMINI_MODEL || "gemini-3.8-flash";
+import { geminiModel, isGeminiConfigured } from "./gemini.ts";
 
 // Linked under the agent's name in every polished reply
 export const HELPDESK_URL = "https://helpdesk.com";
@@ -20,7 +17,7 @@ export type PolishContext = {
 };
 
 export function isPolishConfigured() {
-  return Boolean(process.env.GOOGLE_GENERATIVE_AI_API_KEY);
+  return isGeminiConfigured();
 }
 
 const system = `You edit customer-support replies written by a helpdesk agent.
@@ -55,7 +52,7 @@ function conversation(context: PolishContext) {
 // Throws if Gemini fails or answers with nothing.
 export async function polishReply(draft: string, context: PolishContext) {
   const { text } = await generateText({
-    model: google(model),
+    model: geminiModel,
     system,
     prompt: `Ticket subject: ${context.subject}
 Customer: ${context.customerName}

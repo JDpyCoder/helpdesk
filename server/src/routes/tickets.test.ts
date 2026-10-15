@@ -4,7 +4,8 @@ import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { Role, SenderType } from "../generated/prisma/enums.ts";
 
-// Unit tests for PATCH /api/tickets/:id assignee validation and POST /api/tickets/:id/replies.
+// Unit tests for PATCH /api/tickets/:id assignee validation, POST /api/tickets/:id/replies (and polish)
+// and POST /api/tickets/:id/summary.
 // Prisma and the session check are mocked, so no database or Better Auth instance is needed.
 const findTicket = mock();
 const findUser = mock();
@@ -29,6 +30,9 @@ mock.module("../middleware/requireAuth.ts", () => ({
 const isPolishConfigured = mock(() => true);
 const polishReply = mock();
 mock.module("../lib/polish-reply.ts", () => ({ isPolishConfigured, polishReply }));
+const isSummaryConfigured = mock(() => true);
+const summarizeTicket = mock();
+mock.module("../lib/summarize-ticket.ts", () => ({ isSummaryConfigured, summarizeTicket }));
 
 // Imported after the mocks, so the router never loads the real Prisma client or auth config
 const { ticketsRouter } = await import("./tickets.ts");
@@ -58,6 +62,9 @@ afterEach(() => {
   polishReply.mockReset();
   isPolishConfigured.mockReset();
   isPolishConfigured.mockImplementation(() => true);
+  summarizeTicket.mockReset();
+  isSummaryConfigured.mockReset();
+  isSummaryConfigured.mockImplementation(() => true);
 });
 
 function patch(id: string | number, body: unknown) {
@@ -302,6 +309,91 @@ describe("POST /api/tickets/:id/replies/polish", () => {
 
     expect(res.status).toBe(502);
     expect(await res.json()).toEqual({ error: "The AI service could not polish the reply. Try again." });
+    consoleError.mockRestore();
+  });
+});
+
+function postSummary(id: string | number) {
+  return fetch(`${baseUrl}/${id}/summary`, { method: "POST" });
+}
+
+describe("POST /api/tickets/:id/summary", () => {
+  const ticketForSummary = {
+    subject: "Refund for my course",
+    fromName: "Carla Customer",
+    messages: [
+      {
+        senderType: SenderType.CUSTOMER,
+        fromName: "Carla Customer",
+        body: "Can I get a refund?",
+        receivedAt: new Date("2026-10-02T09:30:00.000Z"),
+      },
+    ],
+  };
+
+  it("summarizes the ticket with its whole conversation and returns it without saving", async () => {
+    findTicket.mockResolvedValue(ticketForSummary);
+    summarizeTicket.mockResolvedValue("Carla wants a refund for her course.");
+
+    const res = await postSummary(42);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ summary: "Carla wants a refund for her course." });
+    expect(findTicket).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 42 } }));
+    expect(summarizeTicket).toHaveBeenCalledWith({
+      subject: "Refund for my course",
+      customerName: "Carla Customer",
+      messages: ticketForSummary.messages,
+    });
+    expect(updateTicket).not.toHaveBeenCalled();
+  });
+
+  it("generates a new summary on every request", async () => {
+    findTicket.mockResolvedValue(ticketForSummary);
+    summarizeTicket.mockResolvedValueOnce("First summary.").mockResolvedValueOnce("Second summary.");
+
+    expect(await (await postSummary(42)).json()).toEqual({ summary: "First summary." });
+    expect(await (await postSummary(42)).json()).toEqual({ summary: "Second summary." });
+    expect(summarizeTicket).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects a malformed ticket id with 400", async () => {
+    const res = await postSummary("abc");
+
+    expect(res.status).toBe(400);
+    expect(findTicket).not.toHaveBeenCalled();
+    expect(summarizeTicket).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 when no Gemini API key is set", async () => {
+    isSummaryConfigured.mockImplementation(() => false);
+
+    const res = await postSummary(42);
+
+    expect(res.status).toBe(503);
+    expect(await res.json()).toEqual({ error: "Ticket summaries are not configured" });
+    expect(findTicket).not.toHaveBeenCalled();
+  });
+
+  it("answers 404 for an unknown ticket", async () => {
+    findTicket.mockResolvedValue(null);
+
+    const res = await postSummary(42);
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "Ticket not found" });
+    expect(summarizeTicket).not.toHaveBeenCalled();
+  });
+
+  it("answers 502 when Gemini fails", async () => {
+    findTicket.mockResolvedValue(ticketForSummary);
+    summarizeTicket.mockRejectedValue(new Error("quota exceeded"));
+    const consoleError = spyOn(console, "error").mockImplementation(() => {});
+
+    const res = await postSummary(42);
+
+    expect(res.status).toBe(502);
+    expect(await res.json()).toEqual({ error: "The AI service could not summarize the ticket. Try again." });
     consoleError.mockRestore();
   });
 });

@@ -11,6 +11,7 @@ import { prisma } from "../db.ts";
 import type { Prisma } from "../generated/prisma/client.ts";
 import { Role, SenderType } from "../generated/prisma/enums.ts";
 import { isPolishConfigured, polishReply } from "../lib/polish-reply.ts";
+import { isSummaryConfigured, summarizeTicket } from "../lib/summarize-ticket.ts";
 import { sendValidationError } from "../lib/validation.ts";
 import { type AuthLocals, requireAuth } from "../middleware/requireAuth.ts";
 
@@ -241,4 +242,44 @@ ticketsRouter.post("/:id/replies/polish", async (req, res: Response<unknown, Aut
     return;
   }
   res.json({ body });
+});
+
+// Summarizes the ticket and its whole conversation with Gemini and returns { summary }. Nothing is
+// stored: every call generates a fresh summary, so it always reflects the latest messages.
+ticketsRouter.post("/:id/summary", async (req, res) => {
+  const parsedId = ticketIdSchema.safeParse(req.params.id);
+  if (!parsedId.success) {
+    sendValidationError(res, parsedId.error);
+    return;
+  }
+  if (!isSummaryConfigured()) {
+    res.status(503).json({ error: "Ticket summaries are not configured" });
+    return;
+  }
+
+  const ticket = await prisma.ticket.findUnique({
+    where: { id: parsedId.data },
+    select: {
+      subject: true,
+      fromName: true,
+      messages: {
+        select: { senderType: true, fromName: true, body: true, receivedAt: true },
+        orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
+      },
+    },
+  });
+  if (!ticket) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  let summary: string;
+  try {
+    summary = await summarizeTicket({ subject: ticket.subject, customerName: ticket.fromName, messages: ticket.messages });
+  } catch (err) {
+    console.error("Summarizing a ticket failed:", err);
+    res.status(502).json({ error: "The AI service could not summarize the ticket. Try again." });
+    return;
+  }
+  res.json({ summary });
 });
