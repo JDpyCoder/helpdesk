@@ -2,7 +2,7 @@ import { inboundEmailSchema } from "core";
 import { Router } from "express";
 import { prisma } from "../db.ts";
 import { Prisma } from "../generated/prisma/client.ts";
-import { TicketStatus } from "../generated/prisma/enums.ts";
+import { SenderType, TicketStatus } from "../generated/prisma/enums.ts";
 import { sendValidationError } from "../lib/validation.ts";
 
 // Inbound email webhook: mounted at /api/inbound-email behind requireInboundSecret (see app.ts).
@@ -34,6 +34,7 @@ inboundEmailRouter.post("/", async (req, res) => {
 
   const message = {
     messageId,
+    senderType: SenderType.CUSTOMER,
     fromEmail: from.email,
     fromName: from.name,
     body: text,

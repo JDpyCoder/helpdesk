@@ -1,7 +1,7 @@
 import { expect, signIn, test } from './fixtures'
 
 test.describe('Route protection (signed out)', () => {
-  for (const path of ['/', '/users', '/does-not-exist']) {
+  for (const path of ['/', '/users', '/tickets', '/does-not-exist']) {
     test(`visiting ${path} redirects to /login`, async ({ page }) => {
       await page.goto(path)
 

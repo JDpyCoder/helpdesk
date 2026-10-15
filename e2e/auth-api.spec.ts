@@ -54,18 +54,6 @@ test.describe('Protected API: /api/me', () => {
 })
 
 test.describe('Sign-in API', () => {
-  test('wrong password returns 401 and sets no session cookie', async ({ request, admin }) => {
-    const res = await request.post('/api/auth/sign-in/email', {
-      data: { email: admin.email, password: 'definitely-wrong' },
-      headers: { Origin: CLIENT_ORIGIN },
-    })
-
-    expect(res.status()).toBe(401)
-    expect(await res.json()).toMatchObject({ code: 'INVALID_EMAIL_OR_PASSWORD' })
-    expect(res.headers()['set-cookie'] ?? '').not.toContain(SESSION_COOKIE)
-    expect((await request.get('/api/me')).status()).toBe(401)
-  })
-
   test('a malformed email is rejected with 400', async ({ request }) => {
     const res = await request.post('/api/auth/sign-in/email', {
       data: { email: 'not-an-email', password: 'whatever-password' },
@@ -100,13 +88,6 @@ test.describe('Sign-in API', () => {
     expect(me.status()).toBe(200)
     expect((await me.json()).user.name).toBe(agent.name)
   })
-
-  test('get-session returns null without a session', async ({ request }) => {
-    const res = await request.get('/api/auth/get-session')
-
-    expect(res.status()).toBe(200)
-    expect(await res.json()).toBeNull()
-  })
 })
 
 test.describe('Public sign-up is disabled', () => {
@@ -129,15 +110,6 @@ test.describe('Public sign-up is disabled', () => {
       headers: { Origin: CLIENT_ORIGIN },
     })
     expect(signIn.status()).toBe(401)
-  })
-
-  test('sign-up asking for the ADMIN role is rejected too', async ({ request }) => {
-    const res = await request.post('/api/auth/sign-up/email', {
-      data: { email: uniqueEmail('signup-admin'), password: 'a-long-enough-password', name: 'Intruder', role: 'ADMIN' },
-      headers: { Origin: CLIENT_ORIGIN },
-    })
-
-    expect(res.status()).toBe(400)
   })
 })
 

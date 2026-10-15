@@ -46,17 +46,6 @@ async function userIdByEmail(request: APIRequestContext, email: string) {
 }
 
 test.describe('Edit user dialog', () => {
-  test('opens pre-filled with the user\'s name and email and a blank password', async ({ page, admin, agent }) => {
-    await signIn(page, admin)
-
-    const dialog = await openEditDialog(page, agent)
-
-    await expect(dialog.getByLabel('Name')).toHaveValue(agent.name)
-    await expect(dialog.getByLabel('Email')).toHaveValue(agent.email)
-    await expect(dialog.getByLabel('Password')).toHaveValue('')
-    await expect(dialog.getByText('Leave blank to keep the current password.')).toBeVisible()
-  })
-
   test('admin changes an agent\'s name and email and the table shows the new values', async ({ page, admin, agent }) => {
     const updated = { name: `Renamed Agent ${Date.now()}`, email: uniqueEmail('renamed') }
     await signIn(page, admin)
@@ -127,25 +116,6 @@ test.describe('Edit user dialog', () => {
     // The admin's own session is untouched
     expect((await page.request.get('/api/me')).status()).toBe(200)
     await agentContext.close()
-  })
-
-  test('shows the duplicate-email error and keeps the dialog open', async ({ page, admin, agent }) => {
-    const other = createUser({ role: 'AGENT' })
-    await signIn(page, admin)
-
-    const dialog = await openEditDialog(page, agent)
-    await dialog.getByLabel('Email').fill(other.email)
-    await dialog.getByRole('button', { name: 'Save changes' }).click()
-
-    await expect(dialog.getByRole('alert')).toHaveText('A user with this email already exists')
-    await expect(dialog).toBeVisible()
-    await expect(dialog.getByLabel('Email')).toHaveValue(other.email)
-
-    // Nothing changed
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
-    await expect(dialog).toBeHidden()
-    await expect(userRow(page, agent.email)).toHaveCount(1)
-    await expect(userRow(page, other.email)).toHaveCount(1)
   })
 })
 

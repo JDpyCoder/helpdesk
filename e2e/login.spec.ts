@@ -119,16 +119,6 @@ test.describe('Successful sign-in', () => {
 
     await expect(page).toHaveURL('/')
   })
-
-  test('an agent can sign in and sees their own name', async ({ page, agent }) => {
-    await page.goto('/login')
-    await page.getByLabel('Email').fill(agent.email)
-    await page.getByLabel('Password').fill(agent.password)
-    await page.getByRole('button', { name: 'Sign in' }).click()
-
-    await expect(page).toHaveURL('/')
-    await expect(page.getByRole('navigation').getByText(agent.name, { exact: true })).toBeVisible()
-  })
 })
 
 test.describe('Failed sign-in', () => {

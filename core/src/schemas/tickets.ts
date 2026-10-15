@@ -10,6 +10,12 @@ export const ticketCategorySchema = z.enum(["GENERAL_QUESTION", "TECHNICAL_QUEST
 export const TicketCategory = ticketCategorySchema.enum;
 export type TicketCategory = z.infer<typeof ticketCategorySchema>;
 
+// Must match the SenderType enum in server/prisma/schema.prisma: who wrote a ticket message,
+// the customer (inbound email) or an agent (a reply from the app)
+export const senderTypeSchema = z.enum(["CUSTOMER", "AGENT"]);
+export const SenderType = senderTypeSchema.enum;
+export type SenderType = z.infer<typeof senderTypeSchema>;
+
 // Columns GET /api/tickets can sort by; the client's table uses the same names as column ids.
 // assignedTo sorts by the assignee's name.
 export const ticketSortFieldSchema = z.enum([
@@ -70,6 +76,17 @@ export const updateTicketSchema = z
   });
 
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
+
+// POST /api/tickets/:id/replies body: an agent's reply to the customer
+export const createReplySchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, "Reply cannot be empty")
+    .max(10000, "Reply must be at most 10,000 characters"),
+});
+
+export type CreateReplyInput = z.infer<typeof createReplySchema>;
 
 // :id in /api/tickets/:id (and the client's /tickets/:id route): a positive integer ticket id
 export const ticketIdSchema = z.coerce

@@ -5,17 +5,24 @@ import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import TicketAssigneeSelect from '@/components/TicketAssigneeSelect.tsx'
 import TicketCategorySelect from '@/components/TicketCategorySelect.tsx'
+import TicketReplyForm from '@/components/TicketReplyForm.tsx'
 import TicketStatusSelect from '@/components/TicketStatusSelect.tsx'
 import type { TicketListItem } from '@/components/TicketsTable.tsx'
+import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx'
 import { Separator } from '@/components/ui/separator.tsx'
 import { Skeleton } from '@/components/ui/skeleton.tsx'
 import { errorMessage } from '@/lib/query-client.ts'
-import { ticketIdSchema } from 'core'
+import { senderTypeLabels, senderTypeVariants } from '@/lib/ticket-labels.ts'
+import { cn } from 'cn'
+import { SenderType, ticketIdSchema } from 'core'
 
 export type TicketMessage = {
   id: number
+  senderType: SenderType
+  // The agent or admin who wrote an AGENT message; null for customer emails
+  author: { id: string; name: string } | null
   fromEmail: string
   fromName: string
   body: string
@@ -89,6 +96,9 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
     )
   }
 
+  // The email that opened the ticket, then everything after it: customer follow-ups and agent replies
+  const [original, ...replies] = ticket.messages
+
   // Two columns from lg up: the conversation on the left, the editable details on the right
   return (
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
@@ -103,27 +113,30 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
         </CardHeader>
         <CardContent className="space-y-6 text-sm">
           <Separator />
-          <section aria-labelledby="ticket-messages-heading" className="space-y-4">
-            <h2 id="ticket-messages-heading" className="font-medium">
-              Messages ({ticket.messages.length})
+          {original && (
+            <section aria-labelledby="ticket-message-heading" className="space-y-4">
+              <h2 id="ticket-message-heading" className="font-medium">
+                Message
+              </h2>
+              <MessageItem message={original} />
+            </section>
+          )}
+          <section aria-labelledby="ticket-replies-heading" className="space-y-4">
+            <h2 id="ticket-replies-heading" className="font-medium">
+              Replies ({replies.length})
             </h2>
-            <ol className="space-y-4">
-              {ticket.messages.map((message) => (
-                <li key={message.id} aria-label={`Message from ${message.fromName}`} className="rounded-lg border p-4">
-                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-                    <div>
-                      <span className="font-medium">{message.fromName}</span>{' '}
-                      <span className="text-muted-foreground">&lt;{message.fromEmail}&gt;</span>
-                    </div>
-                    <time dateTime={message.receivedAt} className="text-muted-foreground">
-                      {new Date(message.receivedAt).toLocaleString()}
-                    </time>
-                  </div>
-                  <p className="break-words whitespace-pre-wrap">{message.body}</p>
-                </li>
-              ))}
-            </ol>
+            {replies.length === 0 ? (
+              <p className="text-muted-foreground">No replies yet.</p>
+            ) : (
+              <ol className="space-y-4">
+                {replies.map((message) => (
+                  <MessageItem key={message.id} message={message} as="li" />
+                ))}
+              </ol>
+            )}
           </section>
+          <Separator />
+          <TicketReplyForm ticketId={ticket.id} />
         </CardContent>
       </Card>
       <Card>
@@ -148,6 +161,28 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+// One message in the conversation; agent replies are tinted so the two sides are easy to tell apart
+function MessageItem({ message, as: Tag = 'article' }: { message: TicketMessage; as?: 'article' | 'li' }) {
+  return (
+    <Tag
+      aria-label={`Message from ${message.fromName}`}
+      className={cn('rounded-lg border p-4', message.senderType === SenderType.AGENT && 'bg-muted/50')}
+    >
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="font-medium">{message.fromName}</span>
+          <span className="text-muted-foreground">&lt;{message.fromEmail}&gt;</span>
+          <Badge variant={senderTypeVariants[message.senderType]}>{senderTypeLabels[message.senderType]}</Badge>
+        </div>
+        <time dateTime={message.receivedAt} className="text-muted-foreground">
+          {new Date(message.receivedAt).toLocaleString()}
+        </time>
+      </div>
+      <p className="break-words whitespace-pre-wrap">{message.body}</p>
+    </Tag>
   )
 }
 

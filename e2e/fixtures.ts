@@ -164,12 +164,6 @@ export async function signInViaApi(request: APIRequestContext, user: Pick<Creden
   return res
 }
 
-export async function signOutViaApi(request: APIRequestContext) {
-  const res = await request.post('/api/auth/sign-out', { headers: { Origin: CLIENT_ORIGIN } })
-  expect(res.status(), await res.text()).toBe(200)
-  return res
-}
-
 // Makes every browser request to `path` (e.g. '/api/health') fail with `status`.
 // `calls()` reports how many requests the app made, e.g. to check retries.
 export async function failApiRoute(page: Page, path: string, status: number) {

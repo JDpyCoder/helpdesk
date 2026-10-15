@@ -2,13 +2,14 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, mock } from "bun:
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { Role } from "../generated/prisma/enums.ts";
+import { Role, SenderType } from "../generated/prisma/enums.ts";
 
-// Unit tests for PATCH /api/tickets/:id assignee validation. Prisma and the session check are
-// mocked, so no database or Better Auth instance is needed.
+// Unit tests for PATCH /api/tickets/:id assignee validation and POST /api/tickets/:id/replies.
+// Prisma and the session check are mocked, so no database or Better Auth instance is needed.
 const findTicket = mock();
 const findUser = mock();
 const updateTicket = mock();
+const sessionUser = { id: "agent-1", name: "Alan Agent", email: "alan@example.com" };
 
 mock.module("../db.ts", () => ({
   prisma: {
@@ -17,7 +18,11 @@ mock.module("../db.ts", () => ({
   },
 }));
 mock.module("../middleware/requireAuth.ts", () => ({
-  requireAuth: (_req: Request, _res: Response, next: NextFunction) => next(),
+  // Every request comes from the same signed-in agent
+  requireAuth: (_req: Request, res: Response, next: NextFunction) => {
+    res.locals.user = sessionUser;
+    next();
+  },
 }));
 
 // Imported after the mocks, so the router never loads the real Prisma client or auth config
@@ -134,6 +139,77 @@ describe("PATCH /api/tickets/:id assignee", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "Ticket not found" });
     expect(findUser).not.toHaveBeenCalled();
+    expect(updateTicket).not.toHaveBeenCalled();
+  });
+});
+
+function postReply(id: string | number, body: unknown) {
+  return fetch(`${baseUrl}/${id}/replies`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+describe("POST /api/tickets/:id/replies", () => {
+  it("adds an AGENT message written by the signed-in user and returns the ticket", async () => {
+    findTicket.mockResolvedValue({ id: 1 });
+    updateTicket.mockResolvedValue(updatedTicket);
+
+    const res = await postReply(1, { body: "  Thanks, we're on it.  " });
+
+    expect(res.status).toBe(201);
+    expect(await res.json()).toEqual({ ticket: updatedTicket });
+    expect(updateTicket).toHaveBeenCalledTimes(1);
+    const args = updateTicket.mock.calls[0]?.[0];
+    expect(args).toMatchObject({
+      where: { id: 1 },
+      data: {
+        messages: {
+          create: {
+            senderType: SenderType.AGENT,
+            authorId: "agent-1",
+            fromEmail: "alan@example.com",
+            fromName: "Alan Agent",
+            body: "Thanks, we're on it.",
+          },
+        },
+      },
+    });
+    expect(args.data.updatedAt).toBeInstanceOf(Date);
+    // Replying doesn't change the ticket's status
+    expect(args.data.status).toBeUndefined();
+  });
+
+  it.each([
+    ["a blank body", { body: "   " }],
+    ["a missing body", {}],
+    ["a body over 10,000 characters", { body: "x".repeat(10001) }],
+  ])("rejects %s before touching the database", async (_label, body) => {
+    const res = await postReply(1, body);
+
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { fieldErrors: Record<string, string[]> };
+    expect(json.fieldErrors.body).toHaveLength(1);
+    expect(findTicket).not.toHaveBeenCalled();
+    expect(updateTicket).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed ticket id", async () => {
+    const res = await postReply("abc", { body: "Hello" });
+
+    expect(res.status).toBe(400);
+    expect(findTicket).not.toHaveBeenCalled();
+    expect(updateTicket).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for an unknown ticket", async () => {
+    findTicket.mockResolvedValue(null);
+
+    const res = await postReply(999, { body: "Hello" });
+
+    expect(res.status).toBe(404);
+    expect(await res.json()).toEqual({ error: "Ticket not found" });
     expect(updateTicket).not.toHaveBeenCalled();
   });
 });

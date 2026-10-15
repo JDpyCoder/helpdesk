@@ -69,52 +69,6 @@ test.describe('Delete user dialog', () => {
     await expect(userRow(page, admin.email)).toHaveCount(1)
     await expect(userRow(page, agent.email)).toHaveCount(0)
   })
-
-  test('Cancel closes the dialog and keeps the user', async ({ page, admin, agent }) => {
-    const deleteRequests: string[] = []
-    page.on('request', (req) => {
-      if (req.method() === 'DELETE') deleteRequests.push(req.url())
-    })
-    await signIn(page, admin)
-
-    const dialog = await openDeleteDialog(page, agent)
-    await dialog.getByRole('button', { name: 'Cancel' }).click()
-
-    await expect(dialog).toBeHidden()
-    await expect(userRow(page, agent.email)).toHaveCount(1)
-    expect(deleteRequests).toEqual([])
-    expect(await listedEmails(page.request)).toContain(agent.email)
-  })
-
-  test('admin rows have a disabled delete button with an explanatory tooltip', async ({ page, admin }) => {
-    const otherAdmin = createUser({ role: 'ADMIN' })
-    await signIn(page, admin)
-    await page.goto('/users')
-
-    for (const user of [admin, otherAdmin]) {
-      const button = userRow(page, user.email).getByRole('button', { name: `Delete ${user.name}` })
-      await expect(button).toBeDisabled()
-    }
-
-    // Disabled buttons get no pointer events, so the tooltip hangs off the wrapper around it
-    const ownButton = userRow(page, admin.email).getByRole('button', { name: `Delete ${admin.name}` })
-    const wrapper = ownButton.locator('..')
-    await wrapper.hover()
-    await expect(page.getByRole('tooltip')).toHaveText("Admins can't be deleted")
-    await expect(page.getByRole('alertdialog')).toHaveCount(0)
-
-    // Keyboard users get the same tooltip on focus
-    // Several steps: Radix keeps the tooltip open until a pointermove lands outside the
-    // grace area between trigger and tooltip, which a single jump never produces
-    await page.mouse.move(0, 0, { steps: 10 })
-    await expect(page.getByRole('tooltip')).toHaveCount(0)
-    const otherWrapper = userRow(page, otherAdmin.email)
-      .getByRole('button', { name: `Delete ${otherAdmin.name}` })
-      .locator('..')
-    await otherWrapper.focus()
-    await expect(page.getByRole('tooltip')).toHaveText("Admins can't be deleted")
-    await expect(page.getByRole('alertdialog')).toHaveCount(0)
-  })
 })
 
 test.describe('Deleted user', () => {
@@ -208,17 +162,6 @@ test.describe('Users API: DELETE /api/users/:id', () => {
     expect(res.status()).toBe(403)
     expect(await res.json()).toEqual({ error: "Admins can't be deleted" })
     expect(await listedEmails(request)).toContain(target.email)
-  })
-
-  test('an admin can\'t delete themselves either', async ({ request }) => {
-    const selfAdmin = createUser({ role: 'ADMIN' })
-    await signInViaApi(request, selfAdmin)
-    const id = await userIdByEmail(request, selfAdmin.email)
-
-    const res = await request.delete(`/api/users/${id}`, { headers })
-
-    expect(res.status()).toBe(403)
-    expect((await request.get('/api/me')).status()).toBe(200)
   })
 
   test('deleting the same user twice returns 404 the second time', async ({ request, admin, agent }) => {

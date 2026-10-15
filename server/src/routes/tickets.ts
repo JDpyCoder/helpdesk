@@ -1,10 +1,10 @@
-import { listTicketsQuerySchema, ticketIdSchema, UNCLASSIFIED, updateTicketSchema } from "core";
-import { Router } from "express";
+import { createReplySchema, listTicketsQuerySchema, ticketIdSchema, UNCLASSIFIED, updateTicketSchema } from "core";
+import { type Response, Router } from "express";
 import { prisma } from "../db.ts";
 import type { Prisma } from "../generated/prisma/client.ts";
-import { Role } from "../generated/prisma/enums.ts";
+import { Role, SenderType } from "../generated/prisma/enums.ts";
 import { sendValidationError } from "../lib/validation.ts";
-import { requireAuth } from "../middleware/requireAuth.ts";
+import { type AuthLocals, requireAuth } from "../middleware/requireAuth.ts";
 
 // Ticket management: mounted at /api/tickets, for any signed-in agent or admin
 export const ticketsRouter = Router();
@@ -76,7 +76,15 @@ ticketsRouter.get("/", async (req, res) => {
 const ticketDetailSelect = {
   ...ticketListSelect,
   messages: {
-    select: { id: true, fromEmail: true, fromName: true, body: true, receivedAt: true },
+    select: {
+      id: true,
+      senderType: true,
+      author: { select: { id: true, name: true } },
+      fromEmail: true,
+      fromName: true,
+      body: true,
+      receivedAt: true,
+    },
     orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
   },
 } as const satisfies Prisma.TicketSelect;
@@ -134,4 +142,45 @@ ticketsRouter.patch("/:id", async (req, res) => {
     select: ticketDetailSelect,
   });
   res.json({ ticket });
+});
+
+// An agent's reply to the customer: appended to the conversation as an AGENT message written by the
+// signed-in user. No email is sent yet. Returns the updated ticket in the detail shape.
+ticketsRouter.post("/:id/replies", async (req, res: Response<unknown, AuthLocals>) => {
+  const parsedId = ticketIdSchema.safeParse(req.params.id);
+  if (!parsedId.success) {
+    sendValidationError(res, parsedId.error);
+    return;
+  }
+  const parsed = createReplySchema.safeParse(req.body);
+  if (!parsed.success) {
+    sendValidationError(res, parsed.error);
+    return;
+  }
+  const id = parsedId.data;
+  const { user } = res.locals;
+
+  if (!(await prisma.ticket.findUnique({ where: { id }, select: { id: true } }))) {
+    res.status(404).json({ error: "Ticket not found" });
+    return;
+  }
+
+  const ticket = await prisma.ticket.update({
+    where: { id },
+    data: {
+      // Set explicitly: the only other change is the nested message
+      updatedAt: new Date(),
+      messages: {
+        create: {
+          senderType: SenderType.AGENT,
+          authorId: user.id,
+          fromEmail: user.email,
+          fromName: user.name,
+          body: parsed.data.body,
+        },
+      },
+    },
+    select: ticketDetailSelect,
+  });
+  res.status(201).json({ ticket });
 });

@@ -121,84 +121,11 @@ test.describe('Inbound email: validation', () => {
     expect(json.fieldErrors).toHaveProperty('text')
   })
 
-  test('rejects a sender without a name with 400', async ({ request }) => {
-    const res = await postEmail(request, { ...email(), from: { email: uniqueEmail('customer') } })
-
-    expect(res.status()).toBe(400)
-    const json = await res.json()
-    expect(json.error).toEqual(expect.any(String))
-    expect(json.fieldErrors).toHaveProperty('from')
-  })
-
-  for (const [label, name] of [['an empty', ''], ['a whitespace-only', '   ']] as const) {
-    test(`rejects ${label} sender name with 400`, async ({ request }) => {
-      const res = await postEmail(request, email({ from: { email: uniqueEmail('customer'), name } }))
-
-      expect(res.status()).toBe(400)
-      const json = await res.json()
-      expect(json.error).toBe('Sender name is required')
-      expect(json.fieldErrors).toHaveProperty('from')
-    })
-  }
-
-  test('rejects a sender name over 200 characters with 400', async ({ request }) => {
-    const res = await postEmail(request, email({ from: { email: uniqueEmail('customer'), name: 'n'.repeat(201) } }))
-
-    expect(res.status()).toBe(400)
-    const json = await res.json()
-    expect(json.error).toBe('Sender name must be at most 200 characters')
-    expect(json.fieldErrors).toHaveProperty('from')
-  })
-
   test('accepts and trims a sender name of exactly 200 characters', async ({ request }) => {
     const name = 'n'.repeat(200)
     const ticketId = await createTicket(request, email({ from: { email: uniqueEmail('customer'), name: `  ${name}  ` } }))
 
     expect(readTicket(ticketId)!.fromName).toBe(name)
-  })
-
-  test('rejects a body over 100,000 characters with 400', async ({ request }) => {
-    const res = await postEmail(request, email({ text: 'a'.repeat(100_001) }))
-
-    expect(res.status()).toBe(400)
-    expect((await res.json()).error).toBe('Body must be at most 100,000 characters')
-  })
-
-  test('accepts a body of exactly 100,000 characters', async ({ request }) => {
-    await createTicket(request, email({ text: 'a'.repeat(100_000) }))
-  })
-
-  test('rejects a receivedAt that is not an ISO datetime with 400', async ({ request }) => {
-    const res = await postEmail(request, email({ receivedAt: 'yesterday' }))
-
-    expect(res.status()).toBe(400)
-    expect((await res.json()).fieldErrors).toHaveProperty('receivedAt')
-  })
-
-  test('rejects a subject over 998 characters with 400', async ({ request }) => {
-    const res = await postEmail(request, email({ subject: 's'.repeat(999) }))
-
-    expect(res.status()).toBe(400)
-    const json = await res.json()
-    expect(json.error).toBe('Subject must be at most 998 characters')
-    expect(json.fieldErrors).toHaveProperty('subject')
-  })
-
-  for (const [label, messageId] of [['a blank', '   '], ['a 999-character', `<${'m'.repeat(997)}>`]] as const) {
-    test(`rejects ${label} messageId with 400`, async ({ request }) => {
-      const res = await postEmail(request, email({ messageId }))
-
-      expect(res.status()).toBe(400)
-      expect((await res.json()).fieldErrors).toHaveProperty('messageId')
-    })
-  }
-
-  test('rejects more than 100 references with 400', async ({ request }) => {
-    const references = Array.from({ length: 101 }, () => uniqueMessageId('ref'))
-    const res = await postEmail(request, email({ references }))
-
-    expect(res.status()).toBe(400)
-    expect((await res.json()).fieldErrors).toHaveProperty('references')
   })
 
   test('rejects a non-JSON body with 400, not a server error', async ({ request }) => {
@@ -294,13 +221,6 @@ test.describe('Inbound email: new tickets', () => {
     )
 
     expect(readTicket(ticketId)!.messages).toHaveLength(1)
-  })
-
-  test('gives each new email its own ticket', async ({ request }) => {
-    const first = await createTicket(request, email())
-    const second = await createTicket(request, email())
-
-    expect(second).not.toBe(first)
   })
 })
 

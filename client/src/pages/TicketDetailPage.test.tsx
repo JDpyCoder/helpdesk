@@ -22,6 +22,8 @@ const ticket = {
   messages: [
     {
       id: 1,
+      senderType: 'CUSTOMER',
+      author: null,
       fromEmail: 'casey@example.com',
       fromName: 'Casey Customer',
       body: 'Hi,\nI would like a refund.',
@@ -29,10 +31,21 @@ const ticket = {
     },
     {
       id: 2,
+      senderType: 'CUSTOMER',
+      author: null,
       fromEmail: 'casey@example.com',
       fromName: 'Casey Customer',
       body: 'Any update?',
       receivedAt: '2026-10-03T10:00:00.000Z',
+    },
+    {
+      id: 3,
+      senderType: 'AGENT',
+      author: { id: 'u1', name: 'Alan Agent' },
+      fromEmail: 'alan@example.com',
+      fromName: 'Alan Agent',
+      body: 'We have refunded your order.',
+      receivedAt: '2026-10-03T11:00:00.000Z',
     },
   ],
 }
@@ -118,12 +131,40 @@ describe('TicketDetailPage', () => {
     mockApi()
     renderPage()
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Messages (2)' })).toBeInTheDocument()
-    const [first, second] = screen.getAllByRole('listitem', { name: 'Message from Casey Customer' })
-    expect(within(first).getByText('Hi, I would like a refund.', { normalizer: (s) => s.replace(/\s+/g, ' ') })).toBeInTheDocument()
-    expect(within(first).getByText(new Date(ticket.messages[0].receivedAt).toLocaleString())).toBeInTheDocument()
-    expect(within(first).getByText('<casey@example.com>')).toBeInTheDocument()
-    expect(within(second).getByText('Any update?')).toBeInTheDocument()
+    expect(await screen.findByRole('heading', { level: 2, name: 'Message' })).toBeInTheDocument()
+    const original = screen.getByRole('article', { name: 'Message from Casey Customer' })
+    expect(within(original).getByText('Hi, I would like a refund.', { normalizer: (s) => s.replace(/\s+/g, ' ') })).toBeInTheDocument()
+    expect(within(original).getByText(new Date(ticket.messages[0].receivedAt).toLocaleString())).toBeInTheDocument()
+    expect(within(original).getByText('<casey@example.com>')).toBeInTheDocument()
+    expect(within(original).getByText('Customer')).toBeInTheDocument()
+
+    // Everything after the first message is the reply thread, oldest first
+    expect(screen.getByRole('heading', { level: 2, name: 'Replies (2)' })).toBeInTheDocument()
+    const replies = within(screen.getByRole('list')).getAllByRole('listitem')
+    expect(replies).toHaveLength(2)
+    expect(replies[0]).toHaveAccessibleName('Message from Casey Customer')
+    expect(within(replies[0]).getByText('Any update?')).toBeInTheDocument()
+    expect(within(replies[0]).getByText('Customer')).toBeInTheDocument()
+    expect(replies[1]).toHaveAccessibleName('Message from Alan Agent')
+    expect(within(replies[1]).getByText('We have refunded your order.')).toBeInTheDocument()
+    expect(within(replies[1]).getByText('Agent')).toBeInTheDocument()
+  })
+
+  it('says there are no replies when the ticket has only its first message', async () => {
+    mockApi({ ...ticket, messages: [ticket.messages[0]] })
+    renderPage()
+
+    expect(await screen.findByRole('heading', { level: 2, name: 'Replies (0)' })).toBeInTheDocument()
+    expect(screen.getByText('No replies yet.')).toBeInTheDocument()
+    expect(screen.queryByRole('list')).not.toBeInTheDocument()
+  })
+
+  it('shows the reply form below the thread', async () => {
+    mockApi()
+    renderPage()
+
+    expect(await screen.findByRole('textbox', { name: 'Reply' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Send reply' })).toBeInTheDocument()
   })
 
   it('links back to the ticket list', () => {

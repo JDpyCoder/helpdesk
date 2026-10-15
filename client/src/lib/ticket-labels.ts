@@ -1,4 +1,4 @@
-import { TicketCategory, TicketStatus } from 'core'
+import { SenderType, TicketCategory, TicketStatus } from 'core'
 
 // Display labels and badge styles shared by the ticket list and the ticket detail page
 
@@ -18,4 +18,14 @@ export const categoryLabels: Record<TicketCategory, string> = {
   [TicketCategory.GENERAL_QUESTION]: 'General Question',
   [TicketCategory.TECHNICAL_QUESTION]: 'Technical Question',
   [TicketCategory.REFUND_REQUEST]: 'Refund Request',
+}
+
+export const senderTypeLabels: Record<SenderType, string> = {
+  [SenderType.CUSTOMER]: 'Customer',
+  [SenderType.AGENT]: 'Agent',
+}
+
+export const senderTypeVariants: Record<SenderType, 'default' | 'secondary' | 'outline'> = {
+  [SenderType.CUSTOMER]: 'outline',
+  [SenderType.AGENT]: 'secondary',
 }

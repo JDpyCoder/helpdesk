@@ -24,6 +24,12 @@ enum TicketCategory {
   REFUND_REQUEST
 }
 
+// Who wrote a ticket message: the customer (inbound email) or an agent (a reply from the app)
+enum SenderType {
+  CUSTOMER
+  AGENT
+}
+
 model User {
   id              String    @id
   name            String
@@ -38,6 +44,7 @@ model User {
   sessions        Session[]
   accounts        Account[]
   assignedTickets Ticket[]
+  ticketMessages  TicketMessage[]
 
   @@unique([email])
   @@map("user")
@@ -117,13 +124,18 @@ model TicketMessage {
   ticketId   Int
   ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   // RFC 5322 Message-ID: makes webhook retries idempotent and links replies to their ticket
-  messageId  String?  @unique
+  messageId  String?    @unique
+  senderType SenderType @default(CUSTOMER)
+  // The agent or admin who wrote an AGENT message; null for customer emails
+  authorId   String?
+  author     User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
   fromEmail  String
   fromName   String
   // Plain-text body
   body       String
-  receivedAt DateTime @default(now())
+  receivedAt DateTime   @default(now())
 
   @@index([ticketId])
+  @@index([authorId])
   @@map("ticket_message")
 }

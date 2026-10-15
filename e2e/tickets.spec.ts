@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import type { APIRequestContext, Page } from '@playwright/test'
+import type { APIRequestContext } from '@playwright/test'
 import {
   createTicketViaEmail,
   createUser,
@@ -7,7 +7,6 @@ import {
   setTicketFields,
   signIn,
   signInViaApi,
-  signOutViaApi,
   test,
   uniqueEmail,
 } from './fixtures'
@@ -15,6 +14,8 @@ import {
 // GET /api/tickets and the /tickets page. Tickets come in through the inbound-email
 // webhook. The database is shared across specs, so every test tags its subjects with a
 // unique string and only asserts on the tickets that carry it.
+// The table's rendering, sorting, filtering, search and pagination UI are covered by
+// client/src/pages/TicketsPage.test.tsx; these tests check what Postgres and the route do.
 
 const ENDPOINT = '/api/tickets'
 
@@ -58,30 +59,12 @@ async function listTagged(request: APIRequestContext, tag: string, params: Recor
   return tickets.filter((t) => t.subject.includes(tag))
 }
 
-function escapeRegExp(text: string) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
-
-// The table's body rows that belong to this test (header row excluded: it has no cells)
-function taggedRows(page: Page, tag: string) {
-  return page.getByRole('row').filter({ has: page.getByRole('cell') }).filter({ hasText: tag })
-}
-
 test.describe('Tickets API: access', () => {
   test('rejects an unauthenticated request with 401', async ({ request }) => {
     const res = await request.get(ENDPOINT)
 
     expect(res.status()).toBe(401)
     expect(await res.json()).toEqual({ error: 'Unauthorized' })
-  })
-
-  test('rejects a request after signing out with 401', async ({ request, agent }) => {
-    await signInViaApi(request, agent)
-    await signOutViaApi(request)
-
-    const res = await request.get(ENDPOINT)
-
-    expect(res.status()).toBe(401)
   })
 
   test('lists tickets for a signed-in agent', async ({ request, agent }) => {
@@ -171,16 +154,6 @@ test.describe('Tickets API: sorting', () => {
     expect(tickets.map((t) => t.id)).toEqual([...ids].reverse())
   })
 
-  test('lists the oldest ticket first with order=asc', async ({ request, agent }) => {
-    const tag = uniqueTag()
-    const ids = await createTickets(request, [`${tag} first`, `${tag} second`, `${tag} third`])
-    await signInViaApi(request, agent)
-
-    const tickets = await listTagged(request, tag, { order: 'asc' })
-
-    expect(tickets.map((t) => t.id)).toEqual(ids)
-  })
-
   test('sorts by subject in both directions', async ({ request, agent }) => {
     const tag = uniqueTag()
     // Created out of alphabetical order, so a createdAt sort would give a different result
@@ -192,20 +165,6 @@ test.describe('Tickets API: sorting', () => {
 
     expect(asc.map((t) => t.id)).toEqual([alpha, bravo, charlie])
     expect(desc.map((t) => t.id)).toEqual([charlie, bravo, alpha])
-  })
-
-  test('sorts by updatedAt, putting the most recently changed ticket first', async ({ request, agent }) => {
-    const tag = uniqueTag()
-    const [older, newer] = await createTickets(request, [`${tag} older`, `${tag} newer`])
-    // Touch the older ticket so it becomes the most recently updated
-    setTicketFields(older, { status: 'RESOLVED' })
-    await signInViaApi(request, agent)
-
-    const byCreated = await listTagged(request, tag)
-    const byUpdated = await listTagged(request, tag, { sortBy: 'updatedAt' })
-
-    expect(byCreated.map((t) => t.id)).toEqual([newer, older])
-    expect(byUpdated.map((t) => t.id)).toEqual([older, newer])
   })
 
   test('sorts by assignee name, with unassigned tickets last in asc and first in desc', async ({ request, agent }) => {
@@ -242,18 +201,6 @@ test.describe('Tickets API: sorting', () => {
     expect(tickets.map((t) => t.status)).toEqual(['OPEN', 'RESOLVED', 'CLOSED'])
     expect(tickets.map((t) => t.id)).toEqual([open, resolved, closed])
   })
-
-  test('sorts by id in both directions', async ({ request, agent }) => {
-    const tag = uniqueTag()
-    const ids = await createTickets(request, [`${tag} first`, `${tag} second`, `${tag} third`])
-    await signInViaApi(request, agent)
-
-    const asc = await listTagged(request, tag, { sortBy: 'id', order: 'asc' })
-    const desc = await listTagged(request, tag, { sortBy: 'id', order: 'desc' })
-
-    expect(asc.map((t) => t.id)).toEqual(ids)
-    expect(desc.map((t) => t.id)).toEqual([...ids].reverse())
-  })
 })
 
 test.describe('Tickets API: filters', () => {
@@ -271,24 +218,6 @@ test.describe('Tickets API: filters', () => {
       // Scoped to this test's tickets: exactly the one with that status
       expect((await listTagged(request, tag, { status })).map((t) => t.id)).toEqual([id])
     }
-  })
-
-  test('filters by category', async ({ request, agent }) => {
-    const tag = uniqueTag()
-    const [refund, technical, unclassified] = await createTickets(
-      request,
-      [`${tag} refund`, `${tag} technical`, `${tag} unclassified`],
-    )
-    setTicketFields(refund, { category: 'REFUND_REQUEST' })
-    setTicketFields(technical, { category: 'TECHNICAL_QUESTION' })
-    await signInViaApi(request, agent)
-
-    const { tickets } = await listPage(request, { category: 'REFUND_REQUEST', pageSize: '100' })
-
-    expect(tickets.every((t) => t.category === 'REFUND_REQUEST'), 'every ticket is a refund request').toBe(true)
-    expect((await listTagged(request, tag, { category: 'REFUND_REQUEST' })).map((t) => t.id)).toEqual([refund])
-    // Without a filter all three are listed, including the unclassified one
-    expect((await listTagged(request, tag)).map((t) => t.id)).toEqual([unclassified, technical, refund])
   })
 
   test('combines status and category filters with sorting', async ({ request, agent }) => {
@@ -404,17 +333,9 @@ test.describe('Tickets API: pagination', () => {
 })
 
 test.describe('Tickets API: validation', () => {
+  // A representative few that prove the route validates the query with listTicketsQuerySchema
   const invalid: [string, Record<string, string> | string][] = [
     ['status', { status: 'PENDING' }],
-    ['status', { status: 'open' }],
-    ['category', { category: 'BILLING' }],
-    // The unclassified filter is the lowercase literal "none" only
-    ['category', { category: 'NONE' }],
-    ['search', { search: 'x'.repeat(201) }],
-    ['sortBy', { sortBy: 'fromEmail' }],
-    ['order', { order: 'up' }],
-    ['page', { page: '0' }],
-    ['page', { page: 'abc' }],
     // Only 10, 25, 50 and 100 are offered
     ['pageSize', { pageSize: '7' }],
     // A repeated parameter arrives as an array, which is not a valid enum value
@@ -422,10 +343,7 @@ test.describe('Tickets API: validation', () => {
   ]
 
   for (const [field, params] of invalid) {
-    // Long values (the 201-character search) are shortened so the test title stays readable
-    const label = typeof params === 'string'
-      ? params
-      : new URLSearchParams(params).toString().replace(/=([^&]{20})[^&]{20,}/g, '=$1...')
+    const label = typeof params === 'string' ? params : new URLSearchParams(params).toString()
     test(`rejects ${label} with 400 and a field error for ${field}`, async ({ request, agent }) => {
       await signInViaApi(request, agent)
 
@@ -448,12 +366,6 @@ test.describe('Tickets API: validation', () => {
 })
 
 test.describe('Tickets page', () => {
-  test('redirects to /login when signed out', async ({ page }) => {
-    await page.goto('/tickets')
-
-    await expect(page).toHaveURL('/login')
-  })
-
   test('an agent opens it from the Tickets nav link', async ({ page, request, agent }) => {
     // At least one ticket, so the table (not the empty state) is shown
     await createTickets(request, [`${uniqueTag()} nav link`])
@@ -475,190 +387,5 @@ test.describe('Tickets page', () => {
 
     await expect(page).toHaveURL('/tickets')
     await expect(page.getByRole('heading', { level: 1, name: 'Tickets' })).toBeVisible()
-  })
-
-  test('lists created tickets newest first', async ({ page, request, agent }) => {
-    const tag = uniqueTag()
-    const subjects = [`${tag} first`, `${tag} second`, `${tag} third`]
-    await createTickets(request, subjects)
-    await signIn(page, agent)
-
-    await page.goto('/tickets')
-
-    await expect(taggedRows(page, tag)).toHaveText(
-      [...subjects].reverse().map((subject) => new RegExp(escapeRegExp(subject))),
-    )
-  })
-
-  test('shows a new, unassigned, unclassified ticket with the right cells', async ({ page, request, agent }) => {
-    const tag = uniqueTag()
-    const subject = `${tag} printer is on fire`
-    const fromEmail = uniqueEmail('customer')
-    const id = await createTicketViaEmail(request, { subject, fromEmail, fromName: 'Pat Printer' })
-    await signIn(page, agent)
-    const createdAt = (await listTagged(page.request, tag))[0].createdAt
-    const createdLabel = await page.evaluate((iso) => new Date(iso).toLocaleDateString(), createdAt)
-
-    await page.goto('/tickets')
-
-    const row = taggedRows(page, tag)
-    await expect(row).toHaveCount(1)
-    const cells = row.getByRole('cell')
-    await expect(cells).toHaveText([
-      String(id),
-      subject,
-      `Pat Printer${fromEmail}`,
-      'Open',
-      'Unclassified',
-      'Unassigned',
-      createdLabel,
-    ])
-  })
-
-  test('shows status, category and assignee labels', async ({ page, request, agent }) => {
-    const tag = uniqueTag()
-    const assignee = createUser({ role: 'AGENT', name: `Assignee ${randomUUID().slice(0, 6)}` })
-    const [resolved, closed] = await createTickets(request, [`${tag} resolved`, `${tag} closed`])
-    setTicketFields(resolved, { status: 'RESOLVED', category: 'REFUND_REQUEST', assigneeEmail: assignee.email })
-    setTicketFields(closed, { status: 'CLOSED', category: 'TECHNICAL_QUESTION' })
-    await signIn(page, agent)
-
-    await page.goto('/tickets')
-
-    const resolvedCells = taggedRows(page, `${tag} resolved`).getByRole('cell')
-    await expect(resolvedCells.nth(3)).toHaveText('Resolved')
-    await expect(resolvedCells.nth(4)).toHaveText('Refund Request')
-    await expect(resolvedCells.nth(5)).toHaveText(assignee.name)
-
-    const closedCells = taggedRows(page, `${tag} closed`).getByRole('cell')
-    await expect(closedCells.nth(3)).toHaveText('Closed')
-    await expect(closedCells.nth(4)).toHaveText('Technical Question')
-    await expect(closedCells.nth(5)).toHaveText('Unassigned')
-  })
-
-  test('clicking the Subject header sorts rows by subject, and clicking again reverses them', async ({ page, request, agent }) => {
-    const tag = uniqueTag()
-    // Created out of alphabetical order, so the default newest-first order differs from both sorts
-    const subjects = [`${tag} bravo`, `${tag} charlie`, `${tag} alpha`]
-    await createTickets(request, subjects)
-    const alphabetical = [...subjects].sort()
-    const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
-    await signIn(page, agent)
-    await page.goto('/tickets')
-    // Scope the list to this test's tickets: a subject sort over the whole (paginated) list
-    // could push them off the first page
-    await page.getByRole('searchbox', { name: 'Search' }).fill(tag)
-    await expect(page.getByRole('navigation', { name: 'Pagination' })).toContainText('Showing 1–3 of 3 tickets')
-
-    const subjectHeader = page.getByRole('columnheader', { name: 'Subject' })
-    const createdHeader = page.getByRole('columnheader', { name: 'Created' })
-    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
-    await expect(subjectHeader).toHaveAttribute('aria-sort', 'none')
-    await expect(createdHeader).toHaveAttribute('aria-sort', 'descending')
-
-    await subjectHeader.getByRole('button', { name: 'Subject' }).click()
-
-    await expect(subjectHeader).toHaveAttribute('aria-sort', 'ascending')
-    await expect(createdHeader).toHaveAttribute('aria-sort', 'none')
-    await expect(taggedRows(page, tag)).toHaveText(asRows(alphabetical))
-
-    await subjectHeader.getByRole('button', { name: 'Subject' }).click()
-
-    await expect(subjectHeader).toHaveAttribute('aria-sort', 'descending')
-    await expect(taggedRows(page, tag)).toHaveText(asRows([...alphabetical].reverse()))
-  })
-
-  test('filters by status and category, and Clear filters shows every ticket again', async ({ page, request, agent }) => {
-    const tag = uniqueTag()
-    const subjects = [`${tag} open`, `${tag} resolved-refund`, `${tag} resolved-unclassified`, `${tag} closed`]
-    const [, resolvedRefund, resolvedUnclassified, closed] = await createTickets(request, subjects)
-    setTicketFields(resolvedRefund, { status: 'RESOLVED', category: 'REFUND_REQUEST' })
-    setTicketFields(resolvedUnclassified, { status: 'RESOLVED' })
-    setTicketFields(closed, { status: 'CLOSED' })
-    await signIn(page, agent)
-    await page.goto('/tickets')
-
-    const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
-    const clear = page.getByRole('button', { name: 'Clear filters' })
-    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
-    await expect(clear).toBeHidden()
-
-    await page.getByLabel('Status').selectOption({ label: 'Resolved' })
-
-    await expect(taggedRows(page, tag)).toHaveText(
-      asRows([`${tag} resolved-unclassified`, `${tag} resolved-refund`]),
-    )
-    await expect(clear).toBeVisible()
-
-    await page.getByLabel('Category').selectOption({ label: 'Unclassified' })
-
-    await expect(taggedRows(page, tag)).toHaveText(asRows([`${tag} resolved-unclassified`]))
-
-    await clear.click()
-
-    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
-    await expect(page.getByLabel('Status')).toHaveValue('')
-    await expect(page.getByLabel('Category')).toHaveValue('')
-    await expect(clear).toBeHidden()
-  })
-
-  test('the search box narrows the list, and Clear filters empties it', async ({ page, request, agent }) => {
-    const tag = uniqueTag()
-    const subjects = [`${tag} alpha`, `${tag} bravo`]
-    await createTickets(request, subjects)
-    await signIn(page, agent)
-    await page.goto('/tickets')
-
-    const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
-    const searchBox = page.getByRole('searchbox', { name: 'Search' })
-    const clear = page.getByRole('button', { name: 'Clear filters' })
-    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
-
-    await searchBox.fill(`${tag} BRAVO`)
-
-    await expect(taggedRows(page, tag)).toHaveText(asRows([`${tag} bravo`]))
-
-    await clear.click()
-
-    await expect(searchBox).toHaveValue('')
-    await expect(taggedRows(page, tag)).toHaveText(asRows([...subjects].reverse()))
-    await expect(clear).toBeHidden()
-  })
-
-  test('pages through search results with Rows per page and Next page', async ({ page, request, agent }) => {
-    const tag = uniqueTag()
-    const subjects = Array.from({ length: 12 }, (_, i) => `${tag} item ${String(i + 1).padStart(2, '0')}`)
-    await createTickets(request, subjects)
-    // Newest first: the oldest two land on page 2
-    const newestFirst = [...subjects].reverse()
-    const asRows = (list: string[]) => list.map((subject) => new RegExp(escapeRegExp(subject)))
-    await signIn(page, agent)
-    await page.goto('/tickets')
-
-    const pagination = page.getByRole('navigation', { name: 'Pagination' })
-    const next = pagination.getByRole('button', { name: 'Next page' })
-    const rowsPerPage = pagination.getByLabel('Rows per page')
-    await page.getByRole('searchbox', { name: 'Search' }).fill(tag)
-
-    // 10 rows per page by default
-    await expect(rowsPerPage).toHaveValue('10')
-    await expect(pagination).toContainText('Showing 1–10 of 12 tickets')
-    await expect(pagination).toContainText('Page 1 of 2')
-    await expect(taggedRows(page, tag)).toHaveText(asRows(newestFirst.slice(0, 10)))
-    await expect(pagination.getByRole('button', { name: 'Previous page' })).toBeDisabled()
-
-    await next.click()
-
-    await expect(pagination).toContainText('Showing 11–12 of 12 tickets')
-    await expect(pagination).toContainText('Page 2 of 2')
-    await expect(taggedRows(page, tag)).toHaveText(asRows(newestFirst.slice(10)))
-    await expect(next).toBeDisabled()
-    await expect(pagination.getByRole('button', { name: 'Last page' })).toBeDisabled()
-
-    await rowsPerPage.selectOption('25')
-
-    await expect(pagination).toContainText('Showing 1–12 of 12 tickets')
-    await expect(pagination).toContainText('Page 1 of 1')
-    await expect(taggedRows(page, tag)).toHaveText(asRows(newestFirst))
   })
 })

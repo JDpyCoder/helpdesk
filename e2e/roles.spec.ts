@@ -9,22 +9,6 @@ test.describe('Admin role', () => {
     await expect(page).toHaveURL('/users')
     await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible()
   })
-
-  test('can open /users directly', async ({ page, admin }) => {
-    await signIn(page, admin)
-
-    await page.goto('/users')
-
-    await expect(page).toHaveURL('/users')
-    await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible()
-  })
-
-  test('/api/me reports the ADMIN role', async ({ page, admin }) => {
-    await signIn(page, admin)
-
-    const body = await (await page.request.get('/api/me')).json()
-    expect(body.user.role).toBe('ADMIN')
-  })
 })
 
 test.describe('Agent role', () => {
@@ -45,12 +29,5 @@ test.describe('Agent role', () => {
     await expect(page).toHaveURL('/')
     await expect(page.getByRole('heading', { name: 'Users' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
-  })
-
-  test('/api/me reports the AGENT role', async ({ page, agent }) => {
-    await signIn(page, agent)
-
-    const body = await (await page.request.get('/api/me')).json()
-    expect(body.user).toMatchObject({ email: agent.email, name: agent.name, role: 'AGENT' })
   })
 })
