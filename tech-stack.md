@@ -12,6 +12,7 @@
 
 - Node.js with Express and TypeScript
 - Database sessions for authentication
+- pg-boss (PostgreSQL job queue) for background jobs such as AI ticket classification
 
 ## Database
 
