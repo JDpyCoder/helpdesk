@@ -37,15 +37,22 @@ enum SenderType {
   AI
 }
 
+// Delivery of an agent or AI reply to the customer; null for customer emails
+enum EmailStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model User {
-  id              String    @id
+  id              String          @id
   name            String
   email           String
-  emailVerified   Boolean   @default(false)
+  emailVerified   Boolean         @default(false)
   image           String?
-  role            Role      @default(AGENT)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  role            Role            @default(AGENT)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
   // Soft delete: set instead of removing the row; active-user queries filter `deletedAt: null`
   deletedAt       DateTime?
   sessions        Session[]
@@ -129,20 +136,22 @@ model Ticket {
 }
 
 model TicketMessage {
-  id         Int      @id @default(autoincrement())
-  ticketId   Int
-  ticket     Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id          Int          @id @default(autoincrement())
+  ticketId    Int
+  ticket      Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   // RFC 5322 Message-ID: makes webhook retries idempotent and links replies to their ticket
-  messageId  String?    @unique
-  senderType SenderType @default(CUSTOMER)
+  messageId   String?      @unique
+  senderType  SenderType   @default(CUSTOMER)
   // The agent or admin who wrote an AGENT message; null for customer emails
-  authorId   String?
-  author     User?      @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  fromEmail  String
-  fromName   String
+  authorId    String?
+  author      User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  fromEmail   String
+  fromName    String
   // Plain-text body
-  body       String
-  receivedAt DateTime   @default(now())
+  body        String
+  receivedAt  DateTime     @default(now())
+  // Whether the reply was emailed to the customer; null for customer emails
+  emailStatus EmailStatus?
 
   @@index([ticketId])
   @@index([authorId])

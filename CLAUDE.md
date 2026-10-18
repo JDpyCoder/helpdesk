@@ -134,6 +134,13 @@ There is no email provider yet. Support mail enters through a provider-agnostic 
   - **Tickets per day:** `GET /api/dashboard/tickets-per-day?timeZone=` (validated by `ticketsPerDayQuerySchema` in `core`: an IANA zone, default `UTC`) returns `TicketsPerDay` = `{ days: [{ date: "YYYY-MM-DD", count }] }` for the last `TICKETS_PER_DAY_DAYS` (30) days, today included, oldest first. The `$queryRaw` uses `generate_series` so empty days come back as 0, and converts `createdAt` (UTC) to the caller's zone before taking the date. Below the tiles, `TicketsPerDayChart` sends the browser's zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`, part of the query key) and draws a bar chart with shadcn `chart` (Recharts 3: `ChartContainer` + `BarChart`, bars in `--chart-2`, hover tooltip). The chart is `aria-hidden`; an `sr-only` table holds the same numbers, and the component tests assert on that table, since jsdom can't lay out Recharts. `DashboardPage.test.tsx` stubs the chart.
 - **Env** — `INBOUND_EMAIL_SECRET` in `server/.env` and `server/.env.test` (generate with `openssl rand -base64 32`). `GOOGLE_GENERATIVE_AI_API_KEY` (and optional `GEMINI_MODEL`) in `server/.env` for reply polishing, ticket summaries and classification; the provider reads the key itself.
 
+## Error reporting (Sentry)
+
+Errors only (`tracesSampleRate: 0`, no replay). Each side is off while its DSN is unset, and Playwright sets both DSNs to `''` so e2e never reports.
+
+- **Server** — `@sentry/bun`, initialised in `server/src/instrument.ts`, which must stay the **first import** of `src/index.ts`; `Sentry.close()` flushes on SIGINT/SIGTERM. `captureConsoleIntegration({ levels: ["error"] })` reports every `console.error` (an `Error` argument becomes an exception with its stack), so the 500 handler, job-queue and Gemini failures are reported where they are already logged. To report a new failure, `console.error` it; don't add `Sentry.captureException` next to an existing log. Scripts (`seed.ts`, etc.) don't load Sentry. Env: `SENTRY_DSN`, optional `SENTRY_ENVIRONMENT` (default `NODE_ENV`).
+- **Client** — `@sentry/react`, initialised in `client/src/instrument.ts` (first import of `main.tsx`); render errors reach it through React 19's `createRoot` error hooks (`Sentry.reactErrorHandler`). Env in `client/.env` (see `client/.env.example`): `VITE_SENTRY_DSN`, optional `VITE_SENTRY_ENVIRONMENT` (default Vite's mode). The DSN is public, built into the bundle.
+
 ## Component tests
 
 Vitest + React Testing Library in jsdom, for the client only. Config is the `test` block in `client/vite.config.ts`; `client/src/test/setup.ts` loads the jest-dom matchers and runs `cleanup` after each test. Reference spec: `client/src/pages/UsersPage.test.tsx`.

@@ -48,7 +48,8 @@ export default defineConfig({
       url: `${apiUrl}/api/auth/ok`,
       // An empty Gemini key overrides the one Bun would load from server/.env, so inbound
       // emails are never sent to Gemini for classification during e2e
-      env: { ...testEnv, NODE_ENV: 'test', GOOGLE_GENERATIVE_AI_API_KEY: '' },
+      // and an empty Sentry DSN keeps test errors out of the dev Sentry project
+      env: { ...testEnv, NODE_ENV: 'test', GOOGLE_GENERATIVE_AI_API_KEY: '', SENTRY_DSN: '' },
       // Never reuse: a server already on this port might be wired to the dev database
       reuseExistingServer: false,
       timeout: 60_000,
@@ -58,7 +59,7 @@ export default defineConfig({
       command: `bun run dev --port ${new URL(clientUrl).port} --strictPort`,
       cwd: 'client',
       url: clientUrl,
-      env: { API_PROXY_TARGET: apiUrl },
+      env: { API_PROXY_TARGET: apiUrl, VITE_SENTRY_DSN: '' },
       reuseExistingServer: false,
       timeout: 60_000,
     },

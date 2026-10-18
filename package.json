@@ -24,5 +24,9 @@
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.6.4",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "imapflow": "^2.5.2",
+    "nodemailer": "^10.1.2"
   }
 }

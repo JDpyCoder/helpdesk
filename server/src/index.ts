@@ -1,5 +1,10 @@
+// Must stay the first import, so Sentry is set up before anything else loads
+import "./instrument.ts";
 import { app } from "./app.ts";
 import { startJobs, stopJobs } from "./lib/jobs.ts";
+import * as Sentry from "@sentry/bun";
+import { error } from "node:console";
+
 
 const port = Number(process.env.PORT) || 3000;
 
@@ -16,6 +21,8 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, async () => {
     server.close();
     await stopJobs();
+    // Send any queued error events before exiting
+    await Sentry.close(2000);
     process.exit(0);
   });
 }

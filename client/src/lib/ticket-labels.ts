@@ -1,4 +1,4 @@
-import { SenderType, TicketCategory, TicketStatus } from 'core'
+import { EmailStatus, SenderType, TicketCategory, TicketStatus } from 'core'
 
 // Display labels and badge styles shared by the ticket list and the ticket detail page
 
@@ -34,4 +34,11 @@ export const senderTypeVariants: Record<SenderType, 'default' | 'secondary' | 'o
   [SenderType.CUSTOMER]: 'outline',
   [SenderType.AGENT]: 'secondary',
   [SenderType.AI]: 'default',
+}
+
+// Shown on agent and AI replies that are emailed to the customer
+export const emailStatusLabels: Record<EmailStatus, string> = {
+  [EmailStatus.PENDING]: 'Sending email…',
+  [EmailStatus.SENT]: 'Emailed',
+  [EmailStatus.FAILED]: 'Email not sent',
 }

@@ -21,6 +21,12 @@ export const senderTypeSchema = z.enum(["CUSTOMER", "AGENT", "AI"]);
 export const SenderType = senderTypeSchema.enum;
 export type SenderType = z.infer<typeof senderTypeSchema>;
 
+// Must match the EmailStatus enum in server/prisma/schema.prisma: delivery of an agent or AI reply
+// to the customer (null for customer emails)
+export const emailStatusSchema = z.enum(["PENDING", "SENT", "FAILED"]);
+export const EmailStatus = emailStatusSchema.enum;
+export type EmailStatus = z.infer<typeof emailStatusSchema>;
+
 // Columns GET /api/tickets can sort by; the client's table uses the same names as column ids.
 // assignedTo sorts by the assignee's name.
 export const ticketSortFieldSchema = z.enum([
