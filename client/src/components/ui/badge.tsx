@@ -18,6 +18,11 @@ const badgeVariants = cva(
         ghost:
           "hover:bg-muted hover:text-muted-foreground dark:hover:bg-muted/50",
         link: "text-primary underline-offset-4 hover:underline",
+        // The helpdesk's voices and states (see the color tokens in index.css)
+        ai: "bg-ai-soft text-ai-soft-foreground",
+        agent: "bg-agent-soft text-agent-soft-foreground",
+        customer: "bg-customer-soft text-customer-soft-foreground",
+        attention: "bg-attention-soft text-attention-soft-foreground",
       },
     },
     defaultVariants: {

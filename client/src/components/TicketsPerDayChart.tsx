@@ -62,24 +62,28 @@ function TicketsPerDayChart() {
                 <Bar dataKey="count" fill="var(--color-count)" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ChartContainer>
-            {/* The chart is drawn for sighted users; screen readers get the same numbers as a table */}
-            <table className="sr-only">
-              <caption>Tickets per day, last {TICKETS_PER_DAY_DAYS} days</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Day</th>
-                  <th scope="col">Tickets</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.days.map(({ date, count }) => (
-                  <tr key={date}>
-                    <td>{formatDay(date)}</td>
-                    <td>{count}</td>
+            {/* The chart is drawn for sighted users; screen readers get the same numbers as a table. sr-only goes
+                on a wrapper, not the table: tables ignore its 1px height, so the hidden rows would still stretch
+                the page. */}
+            <div className="sr-only">
+              <table>
+                <caption>Tickets per day, last {TICKETS_PER_DAY_DAYS} days</caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Day</th>
+                    <th scope="col">Tickets</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {data.days.map(({ date, count }) => (
+                    <tr key={date}>
+                      <td>{formatDay(date)}</td>
+                      <td>{count}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         ) : (
           <Skeleton role="status" aria-label="Loading tickets per day" className="h-64 w-full" />

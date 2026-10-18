@@ -3,6 +3,7 @@ import { AlertCircle, Loader2 } from 'lucide-react'
 import { Controller, useForm } from 'react-hook-form'
 import { Navigate, useNavigate } from 'react-router'
 import { z } from 'zod'
+import BrandMark from '@/components/BrandMark.tsx'
 import { Alert, AlertDescription } from '@/components/ui/alert.tsx'
 import { Button } from '@/components/ui/button.tsx'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card.tsx'
@@ -38,10 +39,11 @@ function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted p-4">
+    <main className="flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-2xl">Helpdesk</CardTitle>
+        <CardHeader className="gap-2">
+          <BrandMark className="size-9" />
+          <CardTitle className="text-2xl font-bold tracking-tight">Helpdesk</CardTitle>
           <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
         <CardContent>

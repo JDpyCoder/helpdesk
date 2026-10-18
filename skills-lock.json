@@ -25,6 +25,12 @@
       "skillPath": "better-auth/emailAndPassword/SKILL.md",
       "computedHash": "ac9f9b0a549390f157ec62f5421a0bc90ac622c7e425af13155953847e0b68ea"
     },
+    "frontend-design": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design/SKILL.md",
+      "computedHash": "106acf230014cbb43ca34e6410371321b56ca742f9ee0442e8ec05bf02eb0384"
+    },
     "organization-best-practices": {
       "source": "better-auth/skills",
       "sourceType": "github",

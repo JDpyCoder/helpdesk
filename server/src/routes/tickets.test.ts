@@ -93,6 +93,26 @@ describe("GET /api/tickets", () => {
     expect(findArgs.where).toMatchObject({ status: { equals: "OPEN", not: "PROCESSING" } });
     expect(countTickets).toHaveBeenCalledWith({ where: findArgs.where });
   });
+
+  it("returns each ticket's latest senders oldest first, without the messages", async () => {
+    // Loaded newest first, as the query asks for the latest messages
+    findTickets.mockResolvedValue([
+      { id: 7, subject: "Refund", messages: [{ senderType: "AGENT" }, { senderType: "AI" }, { senderType: "CUSTOMER" }] },
+    ]);
+    countTickets.mockResolvedValue(1);
+
+    const res = await fetch(baseUrl);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({
+      tickets: [{ id: 7, subject: "Refund", conversation: ["CUSTOMER", "AI", "AGENT"] }],
+      total: 1,
+      page: 1,
+      pageSize: 10,
+    });
+    const [findArgs] = findTickets.mock.calls[0]!;
+    expect(findArgs.select.messages).toMatchObject({ select: { senderType: true }, take: 8 });
+  });
 });
 
 describe("PATCH /api/tickets/:id assignee", () => {

@@ -20,7 +20,8 @@ import {
   SearchIcon,
   X,
 } from 'lucide-react'
-import { useState } from 'react'
+import { createContext, useContext, useState } from 'react'
+import ConversationStrip from '@/components/ConversationStrip.tsx'
 import { TextLink } from '@/components/TextLink.tsx'
 import { Badge } from '@/components/ui/badge.tsx'
 import { Button } from '@/components/ui/button.tsx'
@@ -47,7 +48,14 @@ import {
   ticketStatusSchema,
   UNCLASSIFIED,
 } from 'core'
-import type { SortOrder, TicketCategory, TicketCategoryFilter, TicketSortField } from 'core'
+import type {
+  ListTicketsQuery,
+  SenderType,
+  SortOrder,
+  TicketCategory,
+  TicketCategoryFilter,
+  TicketSortField,
+} from 'core'
 
 // The list never shows PROCESSING tickets (the AI is answering them), so they can't be filtered for
 const listedStatuses = ticketStatusSchema.options.filter((status) => status !== TicketStatus.PROCESSING)
@@ -64,9 +72,15 @@ export type TicketListItem = {
   updatedAt: string
 }
 
+// History state on a ticket page opened from the list: the query that list was showing
+export type TicketListState = { ticketList: ListTicketsQuery }
+
+// A list row also says who wrote the latest messages, oldest first (the detail view has the messages instead)
+export type TicketListRow = TicketListItem & { conversation: SenderType[] }
+
 // GET /api/tickets: one page of tickets plus the number of tickets matching the filters
 type TicketListResponse = {
-  tickets: TicketListItem[]
+  tickets: TicketListRow[]
   total: number
   page: number
   pageSize: number
@@ -79,11 +93,29 @@ const features = tableFeatures({
   rowPaginationFeature,
 })
 
-type TicketTable = ReturnType<typeof useTable<typeof features, TicketListItem>>
+type TicketTable = ReturnType<typeof useTable<typeof features, TicketListRow>>
 
 // Column ids are the API's sortBy values, so the table's sorting state is sent as-is.
 // sortDescFirst is set on every column: with manual sorting there is no data to infer it from.
-const columns: (ColumnDef<typeof features, TicketListItem> & { id: TicketSortField })[] = [
+// The list's current query, for the subject links (the columns are defined outside the component)
+const ListParamsContext = createContext<ListTicketsQuery | null>(null)
+
+// Opens the ticket and carries this list's filters, sort and page in the history state, so the ticket list
+// beside the ticket (TicketQueue) shows the same tickets the agent came from
+function SubjectLink({ ticket }: { ticket: TicketListRow }) {
+  const params = useContext(ListParamsContext)
+  return (
+    <TextLink
+      to={`/tickets/${ticket.id}`}
+      state={params ? ({ ticketList: params } satisfies TicketListState) : undefined}
+      className="block max-w-80 truncate font-medium"
+    >
+      {ticket.subject}
+    </TextLink>
+  )
+}
+
+const columns: (ColumnDef<typeof features, TicketListRow> & { id: TicketSortField })[] = [
   {
     id: 'id',
     accessorKey: 'id',
@@ -97,9 +129,10 @@ const columns: (ColumnDef<typeof features, TicketListItem> & { id: TicketSortFie
     header: 'Subject',
     sortDescFirst: false,
     cell: ({ row }) => (
-      <TextLink to={`/tickets/${row.original.id}`} className="block max-w-80 truncate font-medium">
-        {row.original.subject}
-      </TextLink>
+      <div className="flex flex-col gap-1.5">
+        <SubjectLink ticket={row.original} />
+        <ConversationStrip senders={row.original.conversation} />
+      </div>
     ),
   },
   {
@@ -259,13 +292,15 @@ function TicketsTable() {
           table.resetGlobalFilter(true)
         }}
       />
-      <TicketsTableContent
-        table={table}
-        tickets={tickets}
-        error={error}
-        isFiltered={columnFilters.length > 0 || search !== ''}
-        isUpdating={isPlaceholderData}
-      />
+      <ListParamsContext value={params}>
+        <TicketsTableContent
+          table={table}
+          tickets={tickets}
+          error={error}
+          isFiltered={columnFilters.length > 0 || search !== ''}
+          isUpdating={isPlaceholderData}
+        />
+      </ListParamsContext>
       {data && data.total > 0 && <TicketsPagination table={table} total={data.total} pagination={pagination} />}
     </div>
   )
@@ -433,7 +468,7 @@ function TicketFilters({
 
 type TicketsTableContentProps = {
   table: TicketTable
-  tickets: TicketListItem[] | undefined
+  tickets: TicketListRow[] | undefined
   error: Parameters<typeof errorMessage>[0] | null
   isFiltered: boolean
   isUpdating: boolean

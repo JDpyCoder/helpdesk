@@ -1,4 +1,8 @@
+import type { VariantProps } from 'class-variance-authority'
+import type { badgeVariants } from '@/components/ui/badge.tsx'
 import { EmailStatus, SenderType, TicketCategory, TicketStatus } from 'core'
+
+type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>['variant']>
 
 // Display labels and badge styles shared by the ticket list and the ticket detail page
 
@@ -10,10 +14,11 @@ export const statusLabels: Record<TicketStatus, string> = {
   [TicketStatus.CLOSED]: 'Closed',
 }
 
-export const statusVariants: Record<TicketStatus, 'default' | 'secondary' | 'outline'> = {
-  [TicketStatus.NEW]: 'default',
-  [TicketStatus.PROCESSING]: 'secondary',
-  [TicketStatus.OPEN]: 'default',
+// NEW and PROCESSING are the AI's turn; OPEN is waiting on an agent
+export const statusVariants: Record<TicketStatus, BadgeVariant> = {
+  [TicketStatus.NEW]: 'ai',
+  [TicketStatus.PROCESSING]: 'ai',
+  [TicketStatus.OPEN]: 'attention',
   [TicketStatus.RESOLVED]: 'secondary',
   [TicketStatus.CLOSED]: 'outline',
 }
@@ -30,10 +35,17 @@ export const senderTypeLabels: Record<SenderType, string> = {
   [SenderType.AI]: 'AI',
 }
 
-export const senderTypeVariants: Record<SenderType, 'default' | 'secondary' | 'outline'> = {
-  [SenderType.CUSTOMER]: 'outline',
-  [SenderType.AGENT]: 'secondary',
-  [SenderType.AI]: 'default',
+export const senderTypeVariants: Record<SenderType, BadgeVariant> = {
+  [SenderType.CUSTOMER]: 'customer',
+  [SenderType.AGENT]: 'agent',
+  [SenderType.AI]: 'ai',
+}
+
+// The mark for each sender in the list's conversation strip
+export const senderTypeColors: Record<SenderType, string> = {
+  [SenderType.CUSTOMER]: 'bg-customer',
+  [SenderType.AGENT]: 'bg-agent',
+  [SenderType.AI]: 'bg-ai',
 }
 
 // Shown on agent and AI replies that are emailed to the customer

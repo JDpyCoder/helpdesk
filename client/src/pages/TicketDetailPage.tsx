@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query'
 import axios from 'axios'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
 import TicketAssigneeSelect from '@/components/TicketAssigneeSelect.tsx'
@@ -105,7 +105,7 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_18rem]">
       <Card>
         <CardHeader>
-          <CardTitle className="text-2xl" role="heading" aria-level={1}>
+          <CardTitle className="text-2xl font-bold tracking-tight" role="heading" aria-level={1}>
             <span className="text-muted-foreground">#{ticket.id}</span> {ticket.subject}
           </CardTitle>
           <CardDescription>
@@ -167,24 +167,57 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
   )
 }
 
-// One message in the conversation; agent and AI replies are tinted so the two sides are easy to tell apart
+// Each voice keeps its color: the message's tint and its avatar
+const messageTints: Record<SenderType, string> = {
+  [SenderType.CUSTOMER]: 'bg-card',
+  [SenderType.AGENT]: 'border-agent/15 bg-agent-soft/50',
+  [SenderType.AI]: 'border-ai/15 bg-ai-soft/60',
+}
+
+const avatarStyles: Record<SenderType, string> = {
+  [SenderType.CUSTOMER]: 'bg-customer-soft text-customer-soft-foreground',
+  [SenderType.AGENT]: 'bg-agent text-primary-foreground',
+  [SenderType.AI]: 'bg-ai text-ai-foreground',
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toUpperCase())
+    .join('')
+}
+
+// One message in the conversation, tinted and marked by who wrote it (customer, agent or AI)
 function MessageItem({ message, as: Tag = 'article' }: { message: TicketMessage; as?: 'article' | 'li' }) {
   return (
     <Tag
       aria-label={`Message from ${message.fromName}`}
-      className={cn('rounded-lg border p-4', message.senderType !== SenderType.CUSTOMER && 'bg-muted/50')}
+      className={cn('flex gap-3 rounded-xl border p-4', messageTints[message.senderType])}
     >
-      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-          <span className="font-medium">{message.fromName}</span>
-          <span className="text-muted-foreground">&lt;{message.fromEmail}&gt;</span>
-          <Badge variant={senderTypeVariants[message.senderType]}>{senderTypeLabels[message.senderType]}</Badge>
+      <span
+        aria-hidden
+        className={cn(
+          'grid size-8 shrink-0 place-items-center rounded-full text-xs font-semibold',
+          avatarStyles[message.senderType]
+        )}
+      >
+        {message.senderType === SenderType.AI ? <Sparkles className="size-4" /> : initials(message.fromName)}
+      </span>
+      <div className="min-w-0 flex-1">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="font-semibold">{message.fromName}</span>
+            <span className="text-muted-foreground">&lt;{message.fromEmail}&gt;</span>
+            <Badge variant={senderTypeVariants[message.senderType]}>{senderTypeLabels[message.senderType]}</Badge>
+          </div>
+          <time dateTime={message.receivedAt} className="text-muted-foreground">
+            {new Date(message.receivedAt).toLocaleString()}
+          </time>
         </div>
-        <time dateTime={message.receivedAt} className="text-muted-foreground">
-          {new Date(message.receivedAt).toLocaleString()}
-        </time>
+        <p className="break-words whitespace-pre-wrap">{message.body}</p>
       </div>
-      <p className="break-words whitespace-pre-wrap">{message.body}</p>
     </Tag>
   )
 }

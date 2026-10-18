@@ -21,7 +21,7 @@ function TicketSummary({ ticketId }: { ticketId: number }) {
 
   return (
     <div className="space-y-3">
-      <Button type="button" variant="outline" size="sm" onClick={() => summarize.mutate()} disabled={summarize.isPending}>
+      <Button type="button" variant="ai" size="sm" onClick={() => summarize.mutate()} disabled={summarize.isPending}>
         {summarize.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
         {summarize.isPending ? 'Summarizing…' : 'Summarize'}
       </Button>
@@ -35,10 +35,13 @@ function TicketSummary({ ticketId }: { ticketId: number }) {
         <section
           aria-label="Summary"
           aria-busy={summarize.isPending}
-          className={cn('rounded-lg border bg-muted/50 p-4 transition-opacity', summarize.isPending && 'opacity-60')}
+          className={cn(
+            'rounded-xl bg-ai-soft p-4 text-ai-soft-foreground transition-opacity',
+            summarize.isPending && 'opacity-60'
+          )}
         >
-          <h3 className="mb-2 flex items-center gap-1.5 font-medium">
-            <Sparkles className="size-4 text-muted-foreground" aria-hidden />
+          <h3 className="mb-2 flex items-center gap-1.5 font-semibold">
+            <Sparkles className="size-4 text-ai" aria-hidden />
             Summary
           </h3>
           <p className="break-words whitespace-pre-wrap">{summary}</p>

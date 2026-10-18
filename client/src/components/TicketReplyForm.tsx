@@ -92,7 +92,7 @@ function TicketReplyForm({ ticketId }: { ticketId: number }) {
         />
 
         <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={polish} disabled={busy || !hasReply}>
+          <Button type="button" variant="ai" onClick={polish} disabled={busy || !hasReply}>
             {polishReply.isPending ? <Loader2 className="animate-spin" /> : <Sparkles />}
             {polishReply.isPending ? 'Polishing…' : 'Polish'}
           </Button>

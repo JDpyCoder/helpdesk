@@ -34,6 +34,9 @@ const ticketListSelect = {
   updatedAt: true,
 } as const;
 
+// How many of the latest senders the list returns per ticket
+const CONVERSATION_STRIP_LENGTH = 8;
+
 // Case-insensitive match on subject, sender name or email, plus the ticket id for "42" / "#42"
 function searchWhere(search: string): Prisma.TicketWhereInput {
   const contains = { contains: search, mode: "insensitive" } as const;
@@ -69,10 +72,18 @@ ticketsRouter.get("/", async (req, res) => {
   const primary = sortBy === "assignedTo" ? { assignedTo: { name: order } } : { [sortBy]: order };
 
   // The page and the total, in one round trip
-  const [tickets, total] = await prisma.$transaction([
+  const [rows, total] = await prisma.$transaction([
     prisma.ticket.findMany({
       where,
-      select: ticketListSelect,
+      select: {
+        ...ticketListSelect,
+        // Who wrote the latest messages, for the list's conversation strip
+        messages: {
+          select: { senderType: true },
+          orderBy: [{ receivedAt: "desc" }, { id: "desc" }],
+          take: CONVERSATION_STRIP_LENGTH,
+        },
+      },
       // id breaks ties so tickets with the same value keep a stable order, which paging relies on
       orderBy: sortBy === "id" ? [primary] : [primary, { id: order }],
       skip: (page - 1) * pageSize,
@@ -80,6 +91,11 @@ ticketsRouter.get("/", async (req, res) => {
     }),
     prisma.ticket.count({ where }),
   ]);
+  // `conversation` lists the senders oldest first
+  const tickets = rows.map(({ messages, ...ticket }) => ({
+    ...ticket,
+    conversation: messages.map((message) => message.senderType).reverse(),
+  }));
   res.json({ tickets, total, page, pageSize });
 });
 

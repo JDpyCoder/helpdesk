@@ -1,7 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import axios from 'axios'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter } from 'react-router'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router'
 import { renderWithQuery } from '@/test/render.tsx'
 import TicketsPage from './TicketsPage.tsx'
 
@@ -20,6 +20,7 @@ const tickets = [
     assignedTo: { id: 'u1', name: 'Alan Agent' },
     createdAt: '2026-10-02T09:30:00.000Z',
     updatedAt: '2026-10-02T09:30:00.000Z',
+    conversation: ['CUSTOMER', 'AI', 'CUSTOMER'],
   },
   {
     id: 1,
@@ -31,6 +32,7 @@ const tickets = [
     assignedTo: null,
     createdAt: '2026-10-01T08:00:00.000Z',
     updatedAt: '2026-10-01T12:00:00.000Z',
+    conversation: ['CUSTOMER', 'AGENT'],
   },
 ]
 
@@ -128,6 +130,38 @@ describe('TicketsPage', () => {
     expect(screen.getByRole('link', { name: 'Cannot log in' })).toHaveAttribute('href', '/tickets/1')
   })
 
+  it('opens a ticket with this list’s query in the history state, for the ticket list beside it', async () => {
+    mockGet.mockResolvedValue(listResponse(tickets))
+    // Stands in for the ticket page: shows the state it was opened with
+    function OpenedTicket() {
+      return <output>{JSON.stringify(useLocation().state)}</output>
+    }
+    renderWithQuery(
+      <MemoryRouter initialEntries={['/tickets']}>
+        <Routes>
+          <Route path="/tickets" element={<TicketsPage />} />
+          <Route path="/tickets/:id" element={<OpenedTicket />} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    fireEvent.change(await screen.findByRole('combobox', { name: 'Status' }), { target: { value: 'OPEN' } })
+    await waitFor(() => expect(mockGet).toHaveBeenLastCalledWith('/api/tickets', expect.objectContaining({ params: expect.objectContaining({ status: 'OPEN' }) })))
+    fireEvent.click(await screen.findByRole('link', { name: 'Refund for my course' }))
+
+    expect(JSON.parse(screen.getByRole('status').textContent!)).toEqual({
+      ticketList: { sortBy: 'createdAt', order: 'desc', status: 'OPEN', ...firstPage },
+    })
+  })
+
+  it('shows who wrote each ticket’s latest messages, in order', async () => {
+    mockGet.mockResolvedValue(listResponse(tickets))
+    renderPage()
+
+    expect(await screen.findByRole('img', { name: 'Conversation: Customer, then AI, then Customer' })).toBeInTheDocument()
+    expect(screen.getByRole('img', { name: 'Conversation: Customer, then Agent' })).toBeInTheDocument()
+  })
+
   describe('sorting', () => {
     function header(name: string) {
       return screen.getByRole('columnheader', { name })
@@ -218,7 +252,7 @@ describe('TicketsPage', () => {
       await waitFor(() => expect(mockGet).toHaveBeenCalledTimes(2))
 
       expect(screen.queryByRole('status', { name: 'Loading tickets' })).not.toBeInTheDocument()
-      expect(screen.getByRole('cell', { name: 'Refund for my course' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Refund for my course' })).toBeInTheDocument()
       expect(header('Subject')).toHaveAttribute('aria-sort', 'ascending')
     })
 
@@ -347,7 +381,7 @@ describe('TicketsPage', () => {
       fireEvent.change(screen.getByRole('combobox', { name: 'Status' }), { target: { value: 'OPEN' } })
 
       await waitFor(() => expect(screen.getByRole('table')).toHaveAttribute('aria-busy', 'true'))
-      expect(screen.getByRole('cell', { name: 'Refund for my course' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Refund for my course' })).toBeInTheDocument()
       expect(screen.queryByRole('status', { name: 'Loading tickets' })).not.toBeInTheDocument()
     })
   })
