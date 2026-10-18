@@ -1,3 +1,6 @@
+import { existsSync } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import express, { type NextFunction, type Request, type Response } from "express";
 import helmet from "helmet";
 import { toNodeHandler } from "better-auth/node";
@@ -13,8 +16,16 @@ import { usersRouter } from "./routes/users.ts";
 
 export const app = express();
 
-// Security headers (nosniff, frame-ancestors, HSTS, ...) on every response, auth routes included
-app.use(helmet());
+// Security headers (nosniff, frame-ancestors, HSTS, CSP, ...) on every response, auth routes included.
+// The CSP's defaults fit the built client (scripts, styles and fonts from this origin, no inline scripts);
+// connect-src also allows Sentry, where the client reports errors.
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: { connectSrc: ["'self'", "https://*.sentry.io"] },
+    },
+  })
+);
 
 // Only proxies listed here may set X-Forwarded-For; default is the local Vite dev proxy
 // (env values are strings, so map "true"/"false"/hop counts to what Express expects)
@@ -24,10 +35,22 @@ app.set(
   trustProxy === "true" ? true : trustProxy === "false" ? false : /^\d+$/.test(trustProxy) ? Number(trustProxy) : trustProxy
 );
 
-// Hand Better Auth the client IP Express resolved above, in a header it reads exclusively.
+// Some platforms pass the client IP in their own header instead of X-Forwarded-For (Railway's edge
+// sets X-Real-IP). Only set CLIENT_IP_HEADER when every request comes through that proxy, which
+// overwrites the header, since a client could otherwise send it themselves.
+const clientIpHeader = process.env.CLIENT_IP_HEADER?.toLowerCase();
+
+function clientIp(req: Request): string | undefined {
+  if (!clientIpHeader) return req.ip;
+  const value = req.headers[clientIpHeader];
+  return (Array.isArray(value) ? value[0] : value)?.split(",")[0]?.trim() || undefined;
+}
+
+// Hand Better Auth the client IP resolved above, in a header it reads exclusively.
 // Overwriting it means a client can't spoof its way into a fresh rate-limit bucket.
 app.use((req, _res, next) => {
-  if (req.ip) req.headers["x-client-ip"] = req.ip;
+  const ip = clientIp(req);
+  if (ip) req.headers["x-client-ip"] = ip;
   else delete req.headers["x-client-ip"];
   next();
 });
@@ -72,6 +95,23 @@ app.use("/api/dashboard", dashboardRouter);
 app.use("/api", (req, res) => {
   res.status(404).json({ error: "Not Found", path: req.originalUrl });
 });
+
+// In production this server also serves the built client (`bun run build` → client/dist), so the app and
+// the API share one origin and the session cookie needs no CORS. In development Vite serves the client.
+const clientDist = fileURLToPath(new URL("../../client/dist", import.meta.url));
+if (process.env.NODE_ENV === "production" && existsSync(path.join(clientDist, "index.html"))) {
+  // Vite puts a content hash in every asset name, so they can be cached forever
+  app.use("/assets", express.static(path.join(clientDist, "assets"), { immutable: true, maxAge: "1y" }));
+  app.use("/assets", (_req, res) => {
+    res.status(404).end();
+  });
+  app.use(express.static(clientDist, { index: false }));
+  // Every other GET is a client route (/tickets/42, ...): send the app and let React Router handle it.
+  // no-cache so a new deploy's index.html, with its new asset names, is picked up right away.
+  app.get("/{*splat}", (_req, res) => {
+    res.set("Cache-Control", "no-cache").sendFile(path.join(clientDist, "index.html"));
+  });
+}
 
 // Express 5 forwards rejected promises from async handlers here automatically
 app.use((err: Error & { status?: number; type?: string }, _req: Request, res: Response, _next: NextFunction) => {

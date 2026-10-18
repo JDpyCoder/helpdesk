@@ -3,8 +3,6 @@ import "./instrument.ts";
 import { app } from "./app.ts";
 import { startJobs, stopJobs } from "./lib/jobs.ts";
 import * as Sentry from "@sentry/bun";
-import { error } from "node:console";
-
 
 const port = Number(process.env.PORT) || 3000;
 

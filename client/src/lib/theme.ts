@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useMediaQuery } from '@/lib/use-media-query.ts'
 
 // Light, dark, or whatever the operating system prefers. The choice is kept per browser in localStorage;
-// index.html applies it before the app loads so the page never flashes the wrong theme. Keep the key and the
-// rule there in step with this file.
+// public/theme-init.js applies it before the app loads so the page never flashes the wrong theme. Keep the key
+// and the rule there in step with this file.
 export const themes = ['light', 'dark', 'system'] as const
 export type Theme = (typeof themes)[number]
 

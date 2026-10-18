@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+# Generated inside the image by `bun install` (prisma generate)
+server/src/generated
+.git
+**/.env
+**/.env.*
+!**/.env.example
+e2e
+playwright-report
+blob-report
+test-results
+.claude
+.agents
+*.log
