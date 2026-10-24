@@ -1,0 +1,101 @@
+id,subject,fromEmail,fromName,status,category,createdAt,updatedAt,resolvedAt
+1,Can't log in after password reset,rosa.garcia0@example.com,Rosa Garcia,RESOLVED,TECHNICAL_QUESTION,2026-10-02 21:23:26.139,2026-10-03 06:28:01.392,2026-10-03 06:28:01.392
+2,Can I add another user to my plan?,james.rossi1@example.com,James Rossi,RESOLVED,GENERAL_QUESTION,2026-10-15 06:31:13.852,2026-10-15 07:49:43.81,2026-10-15 07:49:43.81
+3,Charged twice this month,noah.kim2@example.com,Noah Kim,OPEN,REFUND_REQUEST,2026-09-28 10:03:04.884,2026-09-28 10:03:04.884,
+4,Refund for cancelled subscription,alice.rossi3@example.com,Alice Rossi,RESOLVED,REFUND_REQUEST,2026-10-12 13:21:39.943,2026-10-12 13:26:14.82,2026-10-12 13:26:14.82
+5,Sync stuck at 50%,david.smith4@example.com,David Smith,OPEN,TECHNICAL_QUESTION,2026-10-16 03:11:29.337,2026-10-16 03:11:29.337,
+6,What are your support hours?,emma.muller5@example.com,Emma Müller,RESOLVED,GENERAL_QUESTION,2026-10-14 10:41:17.143,2026-10-14 10:44:48.436,2026-10-14 10:44:48.436
+7,How do I change my account email?,isabel.silva6@example.com,Isabel Silva,OPEN,GENERAL_QUESTION,2026-10-15 08:39:46.978,2026-10-15 08:39:46.978,
+8,Export to CSV is empty,olivia.patel7@example.com,Olivia Patel,RESOLVED,TECHNICAL_QUESTION,2026-09-19 07:55:52.077,2026-09-19 08:03:07.213,2026-09-19 08:03:07.213
+9,Sync stuck at 50%,carla.kim8@example.com,Carla Kim,OPEN,TECHNICAL_QUESTION,2026-10-05 04:25:51.014,2026-10-05 04:25:51.014,
+10,What are your support hours?,sam.patel9@example.com,Sam Patel,OPEN,GENERAL_QUESTION,2026-10-06 19:43:31.367,2026-10-06 19:43:31.367,
+11,Wrong plan purchased,alice.smith10@example.com,Alice Smith,RESOLVED,REFUND_REQUEST,2026-10-05 15:57:40.235,2026-10-06 21:54:10.6,2026-10-06 21:54:10.6
+12,Charged twice this month,noah.muller11@example.com,Noah Müller,RESOLVED,REFUND_REQUEST,2026-10-08 06:52:38.758,2026-10-08 06:59:52.415,2026-10-08 06:59:52.415
+13,What are your support hours?,farid.rossi12@example.com,Farid Rossi,RESOLVED,GENERAL_QUESTION,2026-09-28 17:36:22.475,2026-10-01 10:36:48.398,2026-10-01 10:36:48.398
+14,Export to CSV is empty,kavya.brown13@example.com,Kavya Brown,RESOLVED,TECHNICAL_QUESTION,2026-10-09 14:26:36.641,2026-10-10 09:33:53.174,2026-10-10 09:33:53.174
+15,Wrong plan purchased,grace.silva14@example.com,Grace Silva,OPEN,REFUND_REQUEST,2026-09-30 08:45:05.346,2026-09-30 08:45:05.346,
+16,App crashes on startup,kavya.garcia15@example.com,Kavya Garcia,RESOLVED,,2026-09-22 13:32:14.654,2026-09-22 13:38:52.905,2026-09-22 13:38:52.905
+17,Sync stuck at 50%,liam.chen16@example.com,Liam Chen,OPEN,,2026-09-23 10:23:55.013,2026-09-23 10:23:55.013,
+18,API returns 500 error,bob.garcia17@example.com,Bob Garcia,RESOLVED,,2026-09-21 18:30:23.44,2026-09-21 18:33:37.183,2026-09-21 18:33:37.183
+19,Two-factor code never arrives,maria.chen18@example.com,Maria Chen,RESOLVED,TECHNICAL_QUESTION,2026-09-28 21:58:13.728,2026-10-01 20:45:58.526,2026-10-01 20:45:58.526
+20,Order arrived damaged,kavya.patel19@example.com,Kavya Patel,OPEN,REFUND_REQUEST,2026-10-14 19:43:24.814,2026-10-14 19:43:24.814,
+21,Refund for cancelled subscription,alice.patel20@example.com,Alice Patel,RESOLVED,REFUND_REQUEST,2026-10-11 19:23:37.745,2026-10-12 18:20:14.806,2026-10-12 18:20:14.806
+22,Wrong plan purchased,hiro.rossi21@example.com,Hiro Rossi,NEW,REFUND_REQUEST,2026-10-06 03:47:47.585,2026-10-06 03:47:47.585,
+23,Do you offer a student discount?,emma.patel22@example.com,Emma Patel,OPEN,GENERAL_QUESTION,2026-10-09 01:23:24.858,2026-10-09 01:23:24.858,
+24,Charged twice this month,bob.rossi23@example.com,Bob Rossi,RESOLVED,REFUND_REQUEST,2026-10-05 05:38:59.572,2026-10-05 05:48:37.583,2026-10-05 05:48:37.583
+25,API returns 500 error,carla.smith24@example.com,Carla Smith,RESOLVED,,2026-10-03 03:00:07.623,2026-10-03 03:01:48.073,2026-10-03 03:01:48.073
+26,Sync stuck at 50%,sam.muller25@example.com,Sam Müller,OPEN,,2026-10-02 04:26:55.634,2026-10-02 04:26:55.634,
+27,Do you offer a student discount?,tara.garcia26@example.com,Tara Garcia,CLOSED,GENERAL_QUESTION,2026-09-29 02:29:06.339,2026-09-29 02:35:03.291,2026-09-29 02:35:03.291
+28,Where can I find my invoices?,sam.brown27@example.com,Sam Brown,NEW,GENERAL_QUESTION,2026-10-10 17:46:28.97,2026-10-10 17:46:28.97,
+29,Where can I find my invoices?,kavya.rossi28@example.com,Kavya Rossi,RESOLVED,GENERAL_QUESTION,2026-10-09 01:24:15.943,2026-10-09 01:32:36.895,2026-10-09 01:32:36.895
+30,Wrong plan purchased,grace.kim29@example.com,Grace Kim,OPEN,REFUND_REQUEST,2026-10-11 15:26:11.985,2026-10-11 15:26:11.985,
+31,How do I change my account email?,hiro.muller30@example.com,Hiro Müller,CLOSED,GENERAL_QUESTION,2026-09-19 15:30:56.296,2026-09-19 19:42:49.681,2026-09-19 19:42:49.681
+32,How do I change my account email?,liam.patel31@example.com,Liam Patel,OPEN,GENERAL_QUESTION,2026-09-27 05:35:57.077,2026-09-27 05:35:57.077,
+33,Export to CSV is empty,rosa.brown32@example.com,Rosa Brown,RESOLVED,TECHNICAL_QUESTION,2026-09-18 04:53:39.82,2026-09-18 04:55:33.422,2026-09-18 04:55:33.422
+34,Export to CSV is empty,alice.muller33@example.com,Alice Müller,RESOLVED,TECHNICAL_QUESTION,2026-10-09 05:36:36.005,2026-10-09 05:44:34.781,2026-10-09 05:44:34.781
+35,How do I change my account email?,emma.chen34@example.com,Emma Chen,OPEN,GENERAL_QUESTION,2026-09-23 07:24:48.302,2026-09-23 07:24:48.302,
+36,API returns 500 error,carla.chen35@example.com,Carla Chen,OPEN,,2026-10-12 03:16:53.093,2026-10-12 03:16:53.093,
+37,API returns 500 error,priya.muller36@example.com,Priya Müller,NEW,TECHNICAL_QUESTION,2026-09-21 13:52:42.408,2026-09-21 13:52:42.408,
+38,App crashes on startup,liam.garcia37@example.com,Liam Garcia,OPEN,TECHNICAL_QUESTION,2026-10-17 04:34:28.129,2026-10-17 04:34:28.129,
+39,Where can I find my invoices?,isabel.garcia38@example.com,Isabel Garcia,RESOLVED,GENERAL_QUESTION,2026-10-10 03:54:06.962,2026-10-11 20:26:59.143,2026-10-11 20:26:59.143
+40,Charged twice this month,bob.smith39@example.com,Bob Smith,NEW,,2026-10-11 16:35:39.772,2026-10-11 16:35:39.772,
+41,Export to CSV is empty,isabel.silva40@example.com,Isabel Silva,CLOSED,TECHNICAL_QUESTION,2026-10-13 22:39:20.752,2026-10-14 19:15:51.788,2026-10-14 19:15:51.788
+42,Two-factor code never arrives,tara.okafor41@example.com,Tara Okafor,OPEN,,2026-10-11 23:52:45.812,2026-10-11 23:52:45.812,
+43,Sync stuck at 50%,james.brown42@example.com,James Brown,OPEN,TECHNICAL_QUESTION,2026-09-30 14:37:13.364,2026-09-30 14:37:13.364,
+44,Refund for cancelled subscription,tara.rossi43@example.com,Tara Rossi,RESOLVED,REFUND_REQUEST,2026-09-20 07:14:50.861,2026-09-21 01:28:10.344,2026-09-21 01:28:10.344
+45,Export to CSV is empty,rosa.silva44@example.com,Rosa Silva,OPEN,TECHNICAL_QUESTION,2026-09-23 00:35:15.641,2026-09-23 00:35:15.641,
+46,Order arrived damaged,kavya.brown45@example.com,Kavya Brown,NEW,,2026-10-15 16:37:07.817,2026-10-15 16:37:07.817,
+47,API returns 500 error,rosa.kim46@example.com,Rosa Kim,RESOLVED,,2026-09-24 05:51:34.445,2026-09-25 23:05:43.242,2026-09-25 23:05:43.242
+48,What are your support hours?,noah.rossi47@example.com,Noah Rossi,RESOLVED,GENERAL_QUESTION,2026-09-24 06:20:28.865,2026-09-24 06:29:58.11,2026-09-24 06:29:58.11
+49,Can I add another user to my plan?,priya.rossi48@example.com,Priya Rossi,OPEN,GENERAL_QUESTION,2026-09-22 06:53:28.104,2026-09-22 06:53:28.104,
+50,Two-factor code never arrives,tara.garcia49@example.com,Tara Garcia,RESOLVED,TECHNICAL_QUESTION,2026-09-30 08:09:01.006,2026-09-30 08:11:24.3,2026-09-30 08:11:24.3
+51,Can I add another user to my plan?,grace.patel50@example.com,Grace Patel,RESOLVED,GENERAL_QUESTION,2026-09-29 04:38:40.111,2026-09-29 04:45:58.675,2026-09-29 04:45:58.675
+52,Wrong plan purchased,grace.smith51@example.com,Grace Smith,RESOLVED,REFUND_REQUEST,2026-10-12 12:40:54.341,2026-10-15 03:37:38.401,2026-10-15 03:37:38.401
+53,Export to CSV is empty,noah.muller52@example.com,Noah Müller,OPEN,TECHNICAL_QUESTION,2026-09-25 01:25:01.515,2026-09-25 01:25:01.515,
+54,How do I change my account email?,grace.muller53@example.com,Grace Müller,OPEN,GENERAL_QUESTION,2026-10-06 14:09:16.763,2026-10-06 14:09:16.763,
+55,What are your support hours?,noah.muller54@example.com,Noah Müller,NEW,GENERAL_QUESTION,2026-10-02 16:46:10.548,2026-10-02 16:46:10.548,
+56,Can't log in after password reset,isabel.muller55@example.com,Isabel Müller,CLOSED,TECHNICAL_QUESTION,2026-09-26 18:02:59.65,2026-09-26 23:56:42.472,2026-09-26 23:56:42.472
+57,Sync stuck at 50%,isabel.patel56@example.com,Isabel Patel,OPEN,TECHNICAL_QUESTION,2026-09-22 14:47:55.053,2026-09-22 14:47:55.053,
+58,App crashes on startup,emma.brown57@example.com,Emma Brown,CLOSED,,2026-10-07 01:28:46.207,2026-10-07 09:10:52.466,2026-10-07 09:10:52.466
+59,Where can I find my invoices?,isabel.silva58@example.com,Isabel Silva,CLOSED,,2026-09-29 18:47:04.944,2026-09-30 02:27:26.803,2026-09-30 02:27:26.803
+60,Charged twice this month,farid.patel59@example.com,Farid Patel,RESOLVED,REFUND_REQUEST,2026-10-06 03:13:23.846,2026-10-06 03:21:00.389,2026-10-06 03:21:00.389
+61,Sync stuck at 50%,sam.kim60@example.com,Sam Kim,OPEN,TECHNICAL_QUESTION,2026-10-06 14:19:02.935,2026-10-06 14:19:02.935,
+62,Where can I find my invoices?,bob.garcia61@example.com,Bob Garcia,OPEN,GENERAL_QUESTION,2026-09-22 03:42:50.004,2026-09-22 03:42:50.004,
+63,Two-factor code never arrives,rosa.garcia62@example.com,Rosa Garcia,NEW,TECHNICAL_QUESTION,2026-09-24 05:25:48.343,2026-09-24 05:25:48.343,
+64,Can I add another user to my plan?,liam.muller63@example.com,Liam Müller,NEW,,2026-10-04 23:25:06.928,2026-10-04 23:25:06.928,
+65,Can't log in after password reset,kavya.chen64@example.com,Kavya Chen,OPEN,TECHNICAL_QUESTION,2026-09-30 04:53:27.051,2026-09-30 04:53:27.051,
+66,How do I change my account email?,isabel.muller65@example.com,Isabel Müller,CLOSED,GENERAL_QUESTION,2026-09-19 15:20:47.157,2026-09-19 22:23:25.331,2026-09-19 22:23:25.331
+67,App crashes on startup,farid.rossi66@example.com,Farid Rossi,CLOSED,TECHNICAL_QUESTION,2026-10-13 02:05:23.945,2026-10-13 02:07:15.911,2026-10-13 02:07:15.911
+68,App crashes on startup,noah.rossi67@example.com,Noah Rossi,OPEN,TECHNICAL_QUESTION,2026-09-18 18:27:35.336,2026-09-18 18:27:35.336,
+69,What are your support hours?,carla.garcia68@example.com,Carla Garcia,RESOLVED,GENERAL_QUESTION,2026-09-30 21:44:23.069,2026-09-30 21:51:27.763,2026-09-30 21:51:27.763
+70,Can't log in after password reset,sam.rossi69@example.com,Sam Rossi,NEW,TECHNICAL_QUESTION,2026-09-21 03:40:25.444,2026-09-21 03:40:25.444,
+71,Can I add another user to my plan?,rosa.brown70@example.com,Rosa Brown,RESOLVED,GENERAL_QUESTION,2026-09-20 05:57:34.895,2026-09-20 06:06:53.324,2026-09-20 06:06:53.324
+72,Charged twice this month,emma.chen71@example.com,Emma Chen,RESOLVED,,2026-10-04 13:13:31.169,2026-10-06 08:55:18.857,2026-10-06 08:55:18.857
+73,Charged twice this month,farid.garcia72@example.com,Farid Garcia,OPEN,REFUND_REQUEST,2026-09-25 17:05:41.048,2026-09-25 17:05:41.048,
+74,Wrong plan purchased,david.rossi73@example.com,David Rossi,CLOSED,,2026-09-20 07:28:32.466,2026-09-20 07:32:19.549,2026-09-20 07:32:19.549
+75,How do I change my account email?,rosa.patel74@example.com,Rosa Patel,CLOSED,GENERAL_QUESTION,2026-09-21 06:27:45.267,2026-09-21 06:34:12.9,2026-09-21 06:34:12.9
+76,Where can I find my invoices?,carla.brown75@example.com,Carla Brown,OPEN,,2026-09-26 06:15:31.846,2026-09-26 06:15:31.846,
+77,App crashes on startup,sam.chen76@example.com,Sam Chen,NEW,TECHNICAL_QUESTION,2026-10-10 14:28:36.144,2026-10-10 14:28:36.144,
+78,What are your support hours?,bob.silva77@example.com,Bob Silva,RESOLVED,GENERAL_QUESTION,2026-09-26 00:51:18.589,2026-09-27 22:09:14.07,2026-09-27 22:09:14.07
+79,What are your support hours?,sam.okafor78@example.com,Sam Okafor,NEW,,2026-09-21 05:28:30.737,2026-09-21 05:28:30.737,
+80,Wrong plan purchased,priya.smith79@example.com,Priya Smith,OPEN,REFUND_REQUEST,2026-09-23 07:18:27.853,2026-09-23 07:18:27.853,
+81,Can't log in after password reset,alice.muller80@example.com,Alice Müller,OPEN,TECHNICAL_QUESTION,2026-09-29 00:12:45.77,2026-09-29 00:12:45.77,
+82,How do I change my account email?,bob.rossi81@example.com,Bob Rossi,OPEN,GENERAL_QUESTION,2026-09-23 09:12:43.284,2026-09-23 09:12:43.284,
+83,Order arrived damaged,emma.chen82@example.com,Emma Chen,CLOSED,,2026-09-26 13:23:34.831,2026-09-26 13:30:11.189,2026-09-26 13:30:11.189
+84,Charged twice this month,alice.brown83@example.com,Alice Brown,RESOLVED,REFUND_REQUEST,2026-10-15 00:59:26.429,2026-10-15 13:11:48.695,2026-10-15 13:11:48.695
+85,Refund for cancelled subscription,carla.brown84@example.com,Carla Brown,CLOSED,REFUND_REQUEST,2026-10-16 01:47:19.939,2026-10-16 01:52:37.907,2026-10-16 01:52:37.907
+86,Refund for cancelled subscription,maria.garcia85@example.com,Maria Garcia,CLOSED,REFUND_REQUEST,2026-10-10 18:27:57.433,2026-10-10 18:34:20.398,2026-10-10 18:34:20.398
+87,Sync stuck at 50%,olivia.garcia86@example.com,Olivia Garcia,OPEN,TECHNICAL_QUESTION,2026-10-08 21:02:36.801,2026-10-08 21:02:36.801,
+88,Wrong plan purchased,bob.garcia87@example.com,Bob Garcia,RESOLVED,REFUND_REQUEST,2026-10-09 03:54:22.832,2026-10-09 03:56:20.046,2026-10-09 03:56:20.046
+89,What are your support hours?,isabel.chen88@example.com,Isabel Chen,OPEN,GENERAL_QUESTION,2026-09-26 07:36:01.928,2026-09-26 07:36:01.928,
+90,Export to CSV is empty,carla.rossi89@example.com,Carla Rossi,RESOLVED,TECHNICAL_QUESTION,2026-10-08 07:07:04.323,2026-10-09 12:12:51.022,2026-10-09 12:12:51.022
+91,Can I add another user to my plan?,noah.patel90@example.com,Noah Patel,OPEN,GENERAL_QUESTION,2026-09-20 02:23:49.62,2026-09-20 02:23:49.62,
+92,What are your support hours?,olivia.muller91@example.com,Olivia Müller,OPEN,GENERAL_QUESTION,2026-10-05 19:25:37.511,2026-10-05 19:25:37.511,
+93,Wrong plan purchased,tara.kim92@example.com,Tara Kim,NEW,REFUND_REQUEST,2026-10-14 08:34:13.427,2026-10-14 08:34:13.427,
+94,Charged twice this month,farid.chen93@example.com,Farid Chen,NEW,REFUND_REQUEST,2026-10-12 11:39:44.333,2026-10-12 11:39:44.333,
+95,Order arrived damaged,james.patel94@example.com,James Patel,OPEN,,2026-09-28 16:31:49.307,2026-09-28 16:31:49.307,
+96,Refund for cancelled subscription,emma.patel95@example.com,Emma Patel,OPEN,REFUND_REQUEST,2026-09-27 02:26:54.418,2026-09-27 02:26:54.418,
+97,Charged twice this month,isabel.muller96@example.com,Isabel Müller,NEW,REFUND_REQUEST,2026-09-26 15:44:09.975,2026-09-26 15:44:09.975,
+98,Can't log in after password reset,carla.garcia97@example.com,Carla Garcia,NEW,TECHNICAL_QUESTION,2026-10-07 05:16:29.919,2026-10-07 05:16:29.919,
+99,Where can I find my invoices?,isabel.muller98@example.com,Isabel Müller,CLOSED,GENERAL_QUESTION,2026-09-27 21:28:35.276,2026-09-27 21:31:15.665,2026-09-27 21:31:15.665
+100,Charged twice this month,rosa.muller99@example.com,Rosa Müller,RESOLVED,REFUND_REQUEST,2026-10-07 00:27:17.925,2026-10-08 16:42:53.736,2026-10-08 16:42:53.736

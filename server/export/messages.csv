@@ -1,0 +1,687 @@
+id,ticketId,messageId,fromEmail,fromName,body,receivedAt,senderType,emailStatus
+1,1,,rosa.garcia0@example.com,Rosa Garcia,"I reset my password but the new one is rejected every time I try to sign in.
+
+Thanks,
+Rosa",2026-10-02 21:23:26.139,CUSTOMER,
+2,2,,james.rossi1@example.com,James Rossi,"My colleague needs access too. Can I add a second user to my current plan?
+
+Thanks,
+James",2026-10-15 06:31:13.852,CUSTOMER,
+3,3,,noah.kim2@example.com,Noah Kim,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Noah",2026-09-28 10:03:04.884,CUSTOMER,
+4,4,,alice.rossi3@example.com,Alice Rossi,"I cancelled my subscription last week but was still charged. I'd like a refund.
+
+Thanks,
+Alice",2026-10-12 13:21:39.943,CUSTOMER,
+5,5,,david.smith4@example.com,David Smith,"The sync progress bar has been stuck at 50% for hours. Restarting didn't help.
+
+Thanks,
+David",2026-10-16 03:11:29.337,CUSTOMER,
+6,6,,emma.muller5@example.com,Emma Müller,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Emma",2026-10-14 10:41:17.143,CUSTOMER,
+7,7,,isabel.silva6@example.com,Isabel Silva,"I'd like to switch the email on my account to a new address. How can I do that?
+
+Thanks,
+Isabel",2026-10-15 08:39:46.978,CUSTOMER,
+8,8,,olivia.patel7@example.com,Olivia Patel,"When I export my reports to CSV the file only contains the header row.
+
+Thanks,
+Olivia",2026-09-19 07:55:52.077,CUSTOMER,
+9,9,,carla.kim8@example.com,Carla Kim,"The sync progress bar has been stuck at 50% for hours. Restarting didn't help.
+
+Thanks,
+Carla",2026-10-05 04:25:51.014,CUSTOMER,
+10,10,,sam.patel9@example.com,Sam Patel,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Sam",2026-10-06 19:43:31.367,CUSTOMER,
+11,11,,alice.smith10@example.com,Alice Smith,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+Alice",2026-10-05 15:57:40.235,CUSTOMER,
+12,12,,noah.muller11@example.com,Noah Müller,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Noah",2026-10-08 06:52:38.758,CUSTOMER,
+13,13,,farid.rossi12@example.com,Farid Rossi,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Farid",2026-09-28 17:36:22.475,CUSTOMER,
+14,14,,kavya.brown13@example.com,Kavya Brown,"When I export my reports to CSV the file only contains the header row.
+
+Thanks,
+Kavya",2026-10-09 14:26:36.641,CUSTOMER,
+15,15,,grace.silva14@example.com,Grace Silva,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+Grace",2026-09-30 08:45:05.346,CUSTOMER,
+16,16,,kavya.garcia15@example.com,Kavya Garcia,"Since the latest update the app closes immediately when I open it. I'm on Windows 11.
+
+Thanks,
+Kavya",2026-09-22 13:32:14.654,CUSTOMER,
+17,17,,liam.chen16@example.com,Liam Chen,"The sync progress bar has been stuck at 50% for hours. Restarting didn't help.
+
+Thanks,
+Liam",2026-09-23 10:23:55.013,CUSTOMER,
+18,18,,bob.garcia17@example.com,Bob Garcia,"Our integration started getting HTTP 500 responses from the orders endpoint this morning.
+
+Thanks,
+Bob",2026-09-21 18:30:23.44,CUSTOMER,
+19,19,,maria.chen18@example.com,Maria Chen,"I'm not receiving the SMS code for two-factor authentication. I've tried several times.
+
+Thanks,
+Maria",2026-09-28 21:58:13.728,CUSTOMER,
+20,20,,kavya.patel19@example.com,Kavya Patel,"My order arrived with a broken screen. I'd like a full refund please.
+
+Thanks,
+Kavya",2026-10-14 19:43:24.814,CUSTOMER,
+21,21,,alice.patel20@example.com,Alice Patel,"I cancelled my subscription last week but was still charged. I'd like a refund.
+
+Thanks,
+Alice",2026-10-11 19:23:37.745,CUSTOMER,
+22,22,,hiro.rossi21@example.com,Hiro Rossi,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+Hiro",2026-10-06 03:47:47.585,CUSTOMER,
+23,23,,emma.patel22@example.com,Emma Patel,"Hello, I'm a university student. Is there any discount available for students?
+
+Thanks,
+Emma",2026-10-09 01:23:24.858,CUSTOMER,
+24,24,,bob.rossi23@example.com,Bob Rossi,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Bob",2026-10-05 05:38:59.572,CUSTOMER,
+25,25,,carla.smith24@example.com,Carla Smith,"Our integration started getting HTTP 500 responses from the orders endpoint this morning.
+
+Thanks,
+Carla",2026-10-03 03:00:07.623,CUSTOMER,
+26,26,,sam.muller25@example.com,Sam Müller,"The sync progress bar has been stuck at 50% for hours. Restarting didn't help.
+
+Thanks,
+Sam",2026-10-02 04:26:55.634,CUSTOMER,
+27,27,,tara.garcia26@example.com,Tara Garcia,"Hello, I'm a university student. Is there any discount available for students?
+
+Thanks,
+Tara",2026-09-29 02:29:06.339,CUSTOMER,
+28,28,,sam.brown27@example.com,Sam Brown,"I need copies of my invoices for the last three months for my accountant.
+
+Thanks,
+Sam",2026-10-10 17:46:28.97,CUSTOMER,
+29,29,,kavya.rossi28@example.com,Kavya Rossi,"I need copies of my invoices for the last three months for my accountant.
+
+Thanks,
+Kavya",2026-10-09 01:24:15.943,CUSTOMER,
+30,30,,grace.kim29@example.com,Grace Kim,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+Grace",2026-10-11 15:26:11.985,CUSTOMER,
+31,31,,hiro.muller30@example.com,Hiro Müller,"I'd like to switch the email on my account to a new address. How can I do that?
+
+Thanks,
+Hiro",2026-09-19 15:30:56.296,CUSTOMER,
+32,32,,liam.patel31@example.com,Liam Patel,"I'd like to switch the email on my account to a new address. How can I do that?
+
+Thanks,
+Liam",2026-09-27 05:35:57.077,CUSTOMER,
+33,33,,rosa.brown32@example.com,Rosa Brown,"When I export my reports to CSV the file only contains the header row.
+
+Thanks,
+Rosa",2026-09-18 04:53:39.82,CUSTOMER,
+34,34,,alice.muller33@example.com,Alice Müller,"When I export my reports to CSV the file only contains the header row.
+
+Thanks,
+Alice",2026-10-09 05:36:36.005,CUSTOMER,
+35,35,,emma.chen34@example.com,Emma Chen,"I'd like to switch the email on my account to a new address. How can I do that?
+
+Thanks,
+Emma",2026-09-23 07:24:48.302,CUSTOMER,
+36,36,,carla.chen35@example.com,Carla Chen,"Our integration started getting HTTP 500 responses from the orders endpoint this morning.
+
+Thanks,
+Carla",2026-10-12 03:16:53.093,CUSTOMER,
+37,37,,priya.muller36@example.com,Priya Müller,"Our integration started getting HTTP 500 responses from the orders endpoint this morning.
+
+Thanks,
+Priya",2026-09-21 13:52:42.408,CUSTOMER,
+38,38,,liam.garcia37@example.com,Liam Garcia,"Since the latest update the app closes immediately when I open it. I'm on Windows 11.
+
+Thanks,
+Liam",2026-10-17 04:34:28.129,CUSTOMER,
+39,39,,isabel.garcia38@example.com,Isabel Garcia,"I need copies of my invoices for the last three months for my accountant.
+
+Thanks,
+Isabel",2026-10-10 03:54:06.962,CUSTOMER,
+40,40,,bob.smith39@example.com,Bob Smith,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Bob",2026-10-11 16:35:39.772,CUSTOMER,
+41,41,,isabel.silva40@example.com,Isabel Silva,"When I export my reports to CSV the file only contains the header row.
+
+Thanks,
+Isabel",2026-10-13 22:39:20.752,CUSTOMER,
+42,42,,tara.okafor41@example.com,Tara Okafor,"I'm not receiving the SMS code for two-factor authentication. I've tried several times.
+
+Thanks,
+Tara",2026-10-11 23:52:45.812,CUSTOMER,
+43,43,,james.brown42@example.com,James Brown,"The sync progress bar has been stuck at 50% for hours. Restarting didn't help.
+
+Thanks,
+James",2026-09-30 14:37:13.364,CUSTOMER,
+44,44,,tara.rossi43@example.com,Tara Rossi,"I cancelled my subscription last week but was still charged. I'd like a refund.
+
+Thanks,
+Tara",2026-09-20 07:14:50.861,CUSTOMER,
+45,45,,rosa.silva44@example.com,Rosa Silva,"When I export my reports to CSV the file only contains the header row.
+
+Thanks,
+Rosa",2026-09-23 00:35:15.641,CUSTOMER,
+46,46,,kavya.brown45@example.com,Kavya Brown,"My order arrived with a broken screen. I'd like a full refund please.
+
+Thanks,
+Kavya",2026-10-15 16:37:07.817,CUSTOMER,
+47,47,,rosa.kim46@example.com,Rosa Kim,"Our integration started getting HTTP 500 responses from the orders endpoint this morning.
+
+Thanks,
+Rosa",2026-09-24 05:51:34.445,CUSTOMER,
+48,48,,noah.rossi47@example.com,Noah Rossi,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Noah",2026-09-24 06:20:28.865,CUSTOMER,
+49,49,,priya.rossi48@example.com,Priya Rossi,"My colleague needs access too. Can I add a second user to my current plan?
+
+Thanks,
+Priya",2026-09-22 06:53:28.104,CUSTOMER,
+50,50,,tara.garcia49@example.com,Tara Garcia,"I'm not receiving the SMS code for two-factor authentication. I've tried several times.
+
+Thanks,
+Tara",2026-09-30 08:09:01.006,CUSTOMER,
+51,51,,grace.patel50@example.com,Grace Patel,"My colleague needs access too. Can I add a second user to my current plan?
+
+Thanks,
+Grace",2026-09-29 04:38:40.111,CUSTOMER,
+52,52,,grace.smith51@example.com,Grace Smith,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+Grace",2026-10-12 12:40:54.341,CUSTOMER,
+53,53,,noah.muller52@example.com,Noah Müller,"When I export my reports to CSV the file only contains the header row.
+
+Thanks,
+Noah",2026-09-25 01:25:01.515,CUSTOMER,
+54,54,,grace.muller53@example.com,Grace Müller,"I'd like to switch the email on my account to a new address. How can I do that?
+
+Thanks,
+Grace",2026-10-06 14:09:16.763,CUSTOMER,
+55,55,,noah.muller54@example.com,Noah Müller,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Noah",2026-10-02 16:46:10.548,CUSTOMER,
+56,56,,isabel.muller55@example.com,Isabel Müller,"I reset my password but the new one is rejected every time I try to sign in.
+
+Thanks,
+Isabel",2026-09-26 18:02:59.65,CUSTOMER,
+57,57,,isabel.patel56@example.com,Isabel Patel,"The sync progress bar has been stuck at 50% for hours. Restarting didn't help.
+
+Thanks,
+Isabel",2026-09-22 14:47:55.053,CUSTOMER,
+58,58,,emma.brown57@example.com,Emma Brown,"Since the latest update the app closes immediately when I open it. I'm on Windows 11.
+
+Thanks,
+Emma",2026-10-07 01:28:46.207,CUSTOMER,
+59,59,,isabel.silva58@example.com,Isabel Silva,"I need copies of my invoices for the last three months for my accountant.
+
+Thanks,
+Isabel",2026-09-29 18:47:04.944,CUSTOMER,
+60,60,,farid.patel59@example.com,Farid Patel,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Farid",2026-10-06 03:13:23.846,CUSTOMER,
+61,61,,sam.kim60@example.com,Sam Kim,"The sync progress bar has been stuck at 50% for hours. Restarting didn't help.
+
+Thanks,
+Sam",2026-10-06 14:19:02.935,CUSTOMER,
+62,62,,bob.garcia61@example.com,Bob Garcia,"I need copies of my invoices for the last three months for my accountant.
+
+Thanks,
+Bob",2026-09-22 03:42:50.004,CUSTOMER,
+63,63,,rosa.garcia62@example.com,Rosa Garcia,"I'm not receiving the SMS code for two-factor authentication. I've tried several times.
+
+Thanks,
+Rosa",2026-09-24 05:25:48.343,CUSTOMER,
+64,64,,liam.muller63@example.com,Liam Müller,"My colleague needs access too. Can I add a second user to my current plan?
+
+Thanks,
+Liam",2026-10-04 23:25:06.928,CUSTOMER,
+65,65,,kavya.chen64@example.com,Kavya Chen,"I reset my password but the new one is rejected every time I try to sign in.
+
+Thanks,
+Kavya",2026-09-30 04:53:27.051,CUSTOMER,
+66,66,,isabel.muller65@example.com,Isabel Müller,"I'd like to switch the email on my account to a new address. How can I do that?
+
+Thanks,
+Isabel",2026-09-19 15:20:47.157,CUSTOMER,
+67,67,,farid.rossi66@example.com,Farid Rossi,"Since the latest update the app closes immediately when I open it. I'm on Windows 11.
+
+Thanks,
+Farid",2026-10-13 02:05:23.945,CUSTOMER,
+68,68,,noah.rossi67@example.com,Noah Rossi,"Since the latest update the app closes immediately when I open it. I'm on Windows 11.
+
+Thanks,
+Noah",2026-09-18 18:27:35.336,CUSTOMER,
+69,69,,carla.garcia68@example.com,Carla Garcia,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Carla",2026-09-30 21:44:23.069,CUSTOMER,
+70,70,,sam.rossi69@example.com,Sam Rossi,"I reset my password but the new one is rejected every time I try to sign in.
+
+Thanks,
+Sam",2026-09-21 03:40:25.444,CUSTOMER,
+71,71,,rosa.brown70@example.com,Rosa Brown,"My colleague needs access too. Can I add a second user to my current plan?
+
+Thanks,
+Rosa",2026-09-20 05:57:34.895,CUSTOMER,
+72,72,,emma.chen71@example.com,Emma Chen,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Emma",2026-10-04 13:13:31.169,CUSTOMER,
+73,73,,farid.garcia72@example.com,Farid Garcia,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Farid",2026-09-25 17:05:41.048,CUSTOMER,
+74,74,,david.rossi73@example.com,David Rossi,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+David",2026-09-20 07:28:32.466,CUSTOMER,
+75,75,,rosa.patel74@example.com,Rosa Patel,"I'd like to switch the email on my account to a new address. How can I do that?
+
+Thanks,
+Rosa",2026-09-21 06:27:45.267,CUSTOMER,
+76,76,,carla.brown75@example.com,Carla Brown,"I need copies of my invoices for the last three months for my accountant.
+
+Thanks,
+Carla",2026-09-26 06:15:31.846,CUSTOMER,
+77,77,,sam.chen76@example.com,Sam Chen,"Since the latest update the app closes immediately when I open it. I'm on Windows 11.
+
+Thanks,
+Sam",2026-10-10 14:28:36.144,CUSTOMER,
+78,78,,bob.silva77@example.com,Bob Silva,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Bob",2026-09-26 00:51:18.589,CUSTOMER,
+79,79,,sam.okafor78@example.com,Sam Okafor,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Sam",2026-09-21 05:28:30.737,CUSTOMER,
+80,80,,priya.smith79@example.com,Priya Smith,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+Priya",2026-09-23 07:18:27.853,CUSTOMER,
+81,81,,alice.muller80@example.com,Alice Müller,"I reset my password but the new one is rejected every time I try to sign in.
+
+Thanks,
+Alice",2026-09-29 00:12:45.77,CUSTOMER,
+82,82,,bob.rossi81@example.com,Bob Rossi,"I'd like to switch the email on my account to a new address. How can I do that?
+
+Thanks,
+Bob",2026-09-23 09:12:43.284,CUSTOMER,
+83,83,,emma.chen82@example.com,Emma Chen,"My order arrived with a broken screen. I'd like a full refund please.
+
+Thanks,
+Emma",2026-09-26 13:23:34.831,CUSTOMER,
+84,84,,alice.brown83@example.com,Alice Brown,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Alice",2026-10-15 00:59:26.429,CUSTOMER,
+85,85,,carla.brown84@example.com,Carla Brown,"I cancelled my subscription last week but was still charged. I'd like a refund.
+
+Thanks,
+Carla",2026-10-16 01:47:19.939,CUSTOMER,
+86,86,,maria.garcia85@example.com,Maria Garcia,"I cancelled my subscription last week but was still charged. I'd like a refund.
+
+Thanks,
+Maria",2026-10-10 18:27:57.433,CUSTOMER,
+87,87,,olivia.garcia86@example.com,Olivia Garcia,"The sync progress bar has been stuck at 50% for hours. Restarting didn't help.
+
+Thanks,
+Olivia",2026-10-08 21:02:36.801,CUSTOMER,
+88,88,,bob.garcia87@example.com,Bob Garcia,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+Bob",2026-10-09 03:54:22.832,CUSTOMER,
+89,89,,isabel.chen88@example.com,Isabel Chen,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Isabel",2026-09-26 07:36:01.928,CUSTOMER,
+90,90,,carla.rossi89@example.com,Carla Rossi,"When I export my reports to CSV the file only contains the header row.
+
+Thanks,
+Carla",2026-10-08 07:07:04.323,CUSTOMER,
+91,91,,noah.patel90@example.com,Noah Patel,"My colleague needs access too. Can I add a second user to my current plan?
+
+Thanks,
+Noah",2026-09-20 02:23:49.62,CUSTOMER,
+92,92,,olivia.muller91@example.com,Olivia Müller,"Hi, could you tell me when your support team is available? I'm in a different time zone.
+
+Thanks,
+Olivia",2026-10-05 19:25:37.511,CUSTOMER,
+93,93,,tara.kim92@example.com,Tara Kim,"I accidentally bought the annual plan instead of monthly. Can I get a refund and switch?
+
+Thanks,
+Tara",2026-10-14 08:34:13.427,CUSTOMER,
+94,94,,farid.chen93@example.com,Farid Chen,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Farid",2026-10-12 11:39:44.333,CUSTOMER,
+95,95,,james.patel94@example.com,James Patel,"My order arrived with a broken screen. I'd like a full refund please.
+
+Thanks,
+James",2026-09-28 16:31:49.307,CUSTOMER,
+96,96,,emma.patel95@example.com,Emma Patel,"I cancelled my subscription last week but was still charged. I'd like a refund.
+
+Thanks,
+Emma",2026-09-27 02:26:54.418,CUSTOMER,
+97,97,,isabel.muller96@example.com,Isabel Müller,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Isabel",2026-09-26 15:44:09.975,CUSTOMER,
+98,98,,carla.garcia97@example.com,Carla Garcia,"I reset my password but the new one is rejected every time I try to sign in.
+
+Thanks,
+Carla",2026-10-07 05:16:29.919,CUSTOMER,
+99,99,,isabel.muller98@example.com,Isabel Müller,"I need copies of my invoices for the last three months for my accountant.
+
+Thanks,
+Isabel",2026-09-27 21:28:35.276,CUSTOMER,
+100,100,,rosa.muller99@example.com,Rosa Müller,"I was billed twice for my subscription this month. Please refund the duplicate charge.
+
+Thanks,
+Rosa",2026-10-07 00:27:17.925,CUSTOMER,
+101,4,,support@example.com,AI Assistant,"Hi Alice,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-12 13:26:14.82,AI,
+102,6,,support@example.com,AI Assistant,"Hi Emma,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-14 10:44:48.436,AI,
+103,8,,support@example.com,AI Assistant,"Hi Olivia,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-19 08:03:07.213,AI,
+104,12,,support@example.com,AI Assistant,"Hi Noah,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-08 06:59:52.415,AI,
+105,16,,support@example.com,AI Assistant,"Hi Kavya,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-22 13:38:52.905,AI,
+106,18,,support@example.com,AI Assistant,"Hi Bob,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-21 18:33:37.183,AI,
+107,24,,support@example.com,AI Assistant,"Hi Bob,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-05 05:48:37.583,AI,
+108,25,,support@example.com,AI Assistant,"Hi Carla,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-03 03:01:48.073,AI,
+109,27,,support@example.com,AI Assistant,"Hi Tara,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-29 02:35:03.291,AI,
+110,29,,support@example.com,AI Assistant,"Hi Kavya,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-09 01:32:36.895,AI,
+111,33,,support@example.com,AI Assistant,"Hi Rosa,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-18 04:55:33.422,AI,
+112,34,,support@example.com,AI Assistant,"Hi Alice,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-09 05:44:34.781,AI,
+113,48,,support@example.com,AI Assistant,"Hi Noah,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-24 06:29:58.11,AI,
+114,50,,support@example.com,AI Assistant,"Hi Tara,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-30 08:11:24.3,AI,
+115,51,,support@example.com,AI Assistant,"Hi Grace,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-29 04:45:58.675,AI,
+116,60,,support@example.com,AI Assistant,"Hi Farid,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-06 03:21:00.389,AI,
+117,67,,support@example.com,AI Assistant,"Hi Farid,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-13 02:07:15.911,AI,
+118,69,,support@example.com,AI Assistant,"Hi Carla,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-30 21:51:27.763,AI,
+119,71,,support@example.com,AI Assistant,"Hi Rosa,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-20 06:06:53.324,AI,
+120,74,,support@example.com,AI Assistant,"Hi David,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-20 07:32:19.549,AI,
+121,75,,support@example.com,AI Assistant,"Hi Rosa,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-21 06:34:12.9,AI,
+122,83,,support@example.com,AI Assistant,"Hi Emma,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-26 13:30:11.189,AI,
+123,85,,support@example.com,AI Assistant,"Hi Carla,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-16 01:52:37.907,AI,
+124,86,,support@example.com,AI Assistant,"Hi Maria,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-10 18:34:20.398,AI,
+125,88,,support@example.com,AI Assistant,"Hi Bob,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-10-09 03:56:20.046,AI,
+126,99,,support@example.com,AI Assistant,"Hi Isabel,
+
+Thanks for reaching out. Here is how to sort this out:
+
+1. Sign in to your account.
+2. Open Settings and follow the steps for this request.
+
+If anything is still unclear, just reply to this email.
+
+Best regards,
+Support Team",2026-09-27 21:31:15.665,AI,
