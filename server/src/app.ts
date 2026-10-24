@@ -36,7 +36,7 @@ app.set(
 );
 
 // Some platforms pass the client IP in their own header instead of X-Forwarded-For (Railway's edge
-// sets X-Real-IP). Only set CLIENT_IP_HEADER when every request comes through that proxy, which
+// sets X-Real-IP, Render's True-Client-IP). Only set CLIENT_IP_HEADER when every request comes through that proxy, which
 // overwrites the header, since a client could otherwise send it themselves.
 const clientIpHeader = process.env.CLIENT_IP_HEADER?.toLowerCase();
 

@@ -1,0 +1,45 @@
+# Render Blueprint: one Docker web service (API + built client, same origin) and a Render Postgres database.
+# Create it from the Render Dashboard → Blueprints → New Blueprint Instance. See deployment.md.
+services:
+  - type: web
+    name: helpdesk
+    runtime: docker
+    # Free instances spin down after 15 idle minutes, which also pauses the background jobs (pg-boss).
+    # Use starter or above for a helpdesk that should answer and classify tickets around the clock.
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    # Pre-deploy commands need a paid plan, so migrations run at start instead. `exec` keeps Bun as
+    # PID 1, so Render's SIGTERM still reaches the graceful shutdown in src/index.ts.
+    dockerCommand: /bin/sh -c bun run db:deploy && exec bun src/index.ts
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: helpdesk-db
+          property: connectionString
+      - key: BETTER_AUTH_SECRET
+        generateValue: true
+      # BETTER_AUTH_URL and CLIENT_ORIGIN default to RENDER_EXTERNAL_URL (the onrender.com URL).
+      # Set both to your custom domain if you add one.
+      # Render's proxy appends to X-Forwarded-For instead of replacing it, so the client IP is read
+      # from True-Client-IP, which the edge overwrites. Verify it after the first deploy (deployment.md).
+      - key: CLIENT_IP_HEADER
+        value: true-client-ip
+      - key: INBOUND_EMAIL_SECRET
+        generateValue: true
+      - key: GOOGLE_GENERATIVE_AI_API_KEY
+        sync: false
+      - key: SENTRY_DSN
+        sync: false
+      # Docker builds receive service variables as build args (declared as ARG in the Dockerfile)
+      - key: VITE_SENTRY_DSN
+        sync: false
+
+databases:
+  - name: helpdesk-db
+    # Free databases expire 30 days after creation. Use basic-256mb or above to keep your data.
+    plan: free
+    region: oregon
+    databaseName: helpdesk
+    user: helpdesk

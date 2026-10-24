@@ -134,9 +134,11 @@ There is no email provider yet. Support mail enters through a provider-agnostic 
   - **Tickets per day:** `GET /api/dashboard/tickets-per-day?timeZone=` (validated by `ticketsPerDayQuerySchema` in `core`: an IANA zone, default `UTC`) returns `TicketsPerDay` = `{ days: [{ date: "YYYY-MM-DD", count }] }` for the last `TICKETS_PER_DAY_DAYS` (30) days, today included, oldest first. The `$queryRaw` uses `generate_series` so empty days come back as 0, and converts `createdAt` (UTC) to the caller's zone before taking the date. Below the tiles, `TicketsPerDayChart` sends the browser's zone (`Intl.DateTimeFormat().resolvedOptions().timeZone`, part of the query key) and draws a bar chart with shadcn `chart` (Recharts 3: `ChartContainer` + `BarChart`, bars in `--chart-2`, hover tooltip). The chart is `aria-hidden`; an `sr-only` table holds the same numbers, and the component tests assert on that table, since jsdom can't lay out Recharts. `DashboardPage.test.tsx` stubs the chart.
 - **Env** — `INBOUND_EMAIL_SECRET` in `server/.env` and `server/.env.test` (generate with `openssl rand -base64 32`). `GOOGLE_GENERATIVE_AI_API_KEY` (and optional `GEMINI_MODEL`) in `server/.env` for reply polishing, ticket summaries and classification; the provider reads the key itself.
 
-## Deployment (Railway)
+## Deployment (Railway or Render)
 
 See `deployment.md` for the steps and variables. In short: one service built from the root `Dockerfile` (`railway.json`: pre-deploy `bun run db:deploy` = `prisma migrate deploy`, health check `/api/health`) plus Railway Postgres.
+
+- **Render:** `render.yaml` (Blueprint) defines the same Docker service plus Render Postgres. Migrations run in its `dockerCommand` before `exec bun src/index.ts` (pre-deploy needs a paid plan). `BETTER_AUTH_URL`/`CLIENT_ORIGIN` fall back to `RENDER_EXTERNAL_URL` in `auth.ts`, and `CLIENT_IP_HEADER=true-client-ip`, since Render appends to `X-Forwarded-For` instead of replacing it.
 
 - **One origin:** with `NODE_ENV=production`, `app.ts` serves `client/dist` after the API routes. `/assets/*` is cached immutably, a missing asset gets a 404, and every other GET falls back to `index.html` (`no-cache`), so client routes work on reload. `BETTER_AUTH_URL` and `CLIENT_ORIGIN` are both the public URL.
 - **Client IP:** Railway's edge sends `X-Real-IP`, not `X-Forwarded-For`, so production sets `CLIENT_IP_HEADER=x-real-ip`. `app.ts` then takes the IP from that header instead of `req.ip`, and Better Auth's rate limit uses it via `x-client-ip`.

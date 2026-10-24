@@ -1,5 +1,6 @@
 # One image runs the API and serves the built client from the same origin (see server/src/app.ts).
-# Railway builds it from railway.json; migrations run as the pre-deploy command, not here.
+# Railway builds it from railway.json and Render from render.yaml. Migrations run as Railway's pre-deploy
+# command or in Render's dockerCommand, not here.
 FROM oven/bun:1.4.2
 
 WORKDIR /app
@@ -15,7 +16,7 @@ RUN bun install --frozen-lockfile
 
 COPY . .
 
-# Dockerfile builds only see the Railway variables declared here. The client's Sentry DSN is baked into
+# Dockerfile builds only see the Railway/Render variables declared here. The client's Sentry DSN is baked into
 # the bundle, so it has to be present at build time.
 ARG VITE_SENTRY_DSN
 ARG VITE_SENTRY_ENVIRONMENT
@@ -26,5 +27,5 @@ WORKDIR /app/server
 USER bun
 EXPOSE 3000
 
-# Bun itself is PID 1, so Railway's SIGTERM reaches the server's graceful shutdown (src/index.ts)
+# Bun itself is PID 1, so the platform's SIGTERM reaches the server's graceful shutdown (src/index.ts)
 CMD ["bun", "src/index.ts"]

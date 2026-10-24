@@ -4,7 +4,11 @@ import { APIError } from "better-auth/api";
 import { prisma } from "./db.ts";
 import { Role } from "./generated/prisma/enums.ts";
 
-const clientOrigin = process.env.CLIENT_ORIGIN;
+// On Render, the service's onrender.com URL stands in for CLIENT_ORIGIN and BETTER_AUTH_URL when they
+// aren't set, since the server serves the client from that same origin
+const renderUrl = process.env.RENDER_EXTERNAL_URL || undefined;
+
+const clientOrigin = process.env.CLIENT_ORIGIN || renderUrl;
 if (!clientOrigin) {
   throw new Error("CLIENT_ORIGIN must be set in server/.env");
 }
@@ -21,7 +25,9 @@ if (!secret || secret.length < 32) {
 // getSession call hits the `session` table and revocation is immediate.
 export const auth = betterAuth({
   secret,
-  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  // Undefined keeps Better Auth's own lookup of BETTER_AUTH_URL
+  baseURL: process.env.BETTER_AUTH_URL || renderUrl,
+  database:prismaAdapter(prisma, { provider: "postgresql" }),
   // Production only, so dev and e2e runs can sign in repeatedly from one IP;
   // sign-in gets a tighter limit to slow password guessing
   rateLimit: {
