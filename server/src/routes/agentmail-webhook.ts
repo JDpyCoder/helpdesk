@@ -69,7 +69,10 @@ agentmailWebhookRouter.post("/", async (req: Request, res: Response) => {
     res.status(500).json({ error: "Could not read the event" });
     return;
   }
+  // One line per verified event, so the logs show that AgentMail reached the app and what happened to it
+  console.log(`AgentMail webhook: received ${event.eventType === "ignored" ? event.type : event.eventType} ${event.eventId}`);
   if (event.eventType === "ignored") {
+    console.log(`AgentMail webhook: ignored ${event.eventId}: event type not used`);
     res.status(204).end();
     return;
   }
@@ -106,10 +109,17 @@ async function handleEvent(event: Exclude<AgentmailEvent, { eventType: "ignored"
 
   if (event.eventType === "message.received") {
     const { message } = event;
-    if (!inbox || message.inboxId.toLowerCase() !== inbox) return ignored;
+    if (!inbox || message.inboxId.toLowerCase() !== inbox) {
+      // Inbox ids are addresses, not secrets; this is the usual cause of "mail arrives but no ticket"
+      console.log(`AgentMail webhook: ignored ${event.eventId}: inbox ${message.inboxId} is not AGENTMAIL_INBOX_ID (${inbox || "unset"})`);
+      return ignored;
+    }
     const from = parseAddress(message.from);
     // Our own address writing to itself would open a ticket per reply
-    if (from.email === inbox) return ignored;
+    if (from.email === inbox) {
+      console.log(`AgentMail webhook: ignored ${event.eventId}: sent by the inbox itself`);
+      return ignored;
+    }
 
     // Before the transaction: a large body is fetched from the API, which mustn't hold a database transaction open
     const body = (await messageBody(message)).slice(0, MAX_BODY_LENGTH);
