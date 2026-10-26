@@ -11,6 +11,22 @@ export default defineConfig({
       '@': path.resolve(import.meta.dirname, './src'),
     },
   },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Large libraries get chunks of their own: no chunk goes over Vite's 500 kB warning, and browsers keep
+        // the vendor chunks cached across deploys, since only the app chunk changes. Higher priority matches first.
+        codeSplitting: {
+          groups: [
+            { name: 'react', test: /node_modules[\\/](react|react-dom|scheduler)[\\/]/, priority: 30 },
+            { name: 'charts', test: /node_modules[\\/](recharts|victory-vendor|d3-[^\\/]+)[\\/]/, priority: 20 },
+            { name: 'sentry', test: /node_modules[\\/]@sentry(-internal)?[\\/]/, priority: 20 },
+            { name: 'vendor', test: /node_modules/, priority: 10 },
+          ],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: {
