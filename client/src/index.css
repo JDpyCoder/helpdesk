@@ -8,7 +8,7 @@
 @theme inline {
     --font-heading: var(--font-sans);
     --font-sans: 'Instrument Sans Variable', sans-serif;
-    /* Who wrote a message: customers (slate), the AI (indigo), agents (teal, the primary color). Used by
+    /* Who wrote a message: customers (slate), the AI (indigo), agents (teal). The primary accent is violet. Used by
        avatars, badges, the conversation strip and AI actions, so the three voices read the same everywhere. */
     --color-customer: var(--customer);
     --color-customer-soft: var(--customer-soft);
@@ -71,7 +71,7 @@
     --card-foreground: #18213a;
     --popover: #ffffff;
     --popover-foreground: #18213a;
-    --primary: #0b7a70;
+    --primary: #6d28d9;
     --primary-foreground: #ffffff;
     --secondary: #eef0f5;
     --secondary-foreground: #18213a;
@@ -82,7 +82,7 @@
     --destructive: oklch(0.577 0.245 27.325);
     --border: #e3e7ee;
     --input: #d5dae3;
-    --ring: #0b7a70;
+    --ring: #6d28d9;
     --chart-1: #c9cff0;
     --chart-2: #7c3aed;
     --chart-3: #4a4fd1;
@@ -91,12 +91,12 @@
     --radius: 0.625rem;
     --sidebar: #ffffff;
     --sidebar-foreground: #18213a;
-    --sidebar-primary: #0b7a70;
+    --sidebar-primary: #6d28d9;
     --sidebar-primary-foreground: #ffffff;
     --sidebar-accent: #eef0f5;
     --sidebar-accent-foreground: #18213a;
     --sidebar-border: #e3e7ee;
-    --sidebar-ring: #0b7a70;
+    --sidebar-ring: #6d28d9;
     --customer: #8d97ad;
     --customer-soft: #e6e9f0;
     --customer-soft-foreground: #3b4560;
@@ -119,8 +119,8 @@
     --card-foreground: #e8ebf2;
     --popover: #1a2032;
     --popover-foreground: #e8ebf2;
-    --primary: #2bb3a5;
-    --primary-foreground: #062b27;
+    --primary: #a78bfa;
+    --primary-foreground: #1e0b46;
     --secondary: #252c40;
     --secondary-foreground: #e8ebf2;
     --muted: #252c40;
@@ -130,7 +130,7 @@
     --destructive: oklch(0.704 0.191 22.216);
     --border: oklch(1 0 0 / 10%);
     --input: oklch(1 0 0 / 15%);
-    --ring: #2bb3a5;
+    --ring: #a78bfa;
     --chart-1: #3a3f7a;
     --chart-2: #a78bfa;
     --chart-3: #8f93f0;
@@ -138,12 +138,12 @@
     --chart-5: #f2c46b;
     --sidebar: #1a2032;
     --sidebar-foreground: #e8ebf2;
-    --sidebar-primary: #2bb3a5;
-    --sidebar-primary-foreground: #062b27;
+    --sidebar-primary: #a78bfa;
+    --sidebar-primary-foreground: #1e0b46;
     --sidebar-accent: #252c40;
     --sidebar-accent-foreground: #e8ebf2;
     --sidebar-border: oklch(1 0 0 / 10%);
-    --sidebar-ring: #2bb3a5;
+    --sidebar-ring: #a78bfa;
     --customer: #6e7891;
     --customer-soft: #2a3247;
     --customer-soft-foreground: #c9cfdc;
