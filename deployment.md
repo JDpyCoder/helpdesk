@@ -52,6 +52,7 @@ database. Nothing else needs provisioning.
 | `SENTRY_ENVIRONMENT` | `production` | Optional (defaults to `NODE_ENV`) |
 | `VITE_SENTRY_DSN` | client project DSN | Optional. **Used at build time** (declared as a Docker `ARG`), so redeploy after changing it |
 | `VITE_SENTRY_ENVIRONMENT` | `production` | Optional, build time |
+| `VITE_SUPPORT_EMAIL` | `support@example.com` | Optional, build time. Address in the support banner and "Need help?" button (default `jaydeep.helpdesk@agentmail.to`) |
 | `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_ADMIN_NAME` | first admin | Only for `db:seed`; remove the password afterwards |
 
 You don't need to set these:

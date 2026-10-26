@@ -12,9 +12,9 @@ const textLinkVariants = cva('rounded-sm outline-none focus-visible:ring-3 focus
       default: 'underline-offset-4 hover:underline',
       // A navigation link: muted until hovered
       nav: 'text-sm text-muted-foreground transition-colors hover:text-foreground',
-      // A sidebar item: highlighted while it is the current page (NavLink sets aria-current)
+      // A sidebar item: a light violet tint on hover, a stronger one while it is the current page (NavLink sets aria-current)
       sidebar:
-        'flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground aria-[current=page]:bg-sidebar-accent aria-[current=page]:text-sidebar-accent-foreground [&_svg]:size-4 [&_svg]:shrink-0',
+        'flex h-9 items-center gap-2.5 rounded-lg px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary aria-[current=page]:bg-primary/15 aria-[current=page]:text-primary [&_svg]:size-4 [&_svg]:shrink-0',
     },
   },
   defaultVariants: {

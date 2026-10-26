@@ -20,6 +20,7 @@ COPY . .
 # the bundle, so it has to be present at build time.
 ARG VITE_SENTRY_DSN
 ARG VITE_SENTRY_ENVIRONMENT
+ARG VITE_SUPPORT_EMAIL
 RUN bun run build
 
 ENV NODE_ENV=production
