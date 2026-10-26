@@ -168,6 +168,25 @@ describe('TicketDetailPage', () => {
     expect(within(reply).getByText('Go to the login page and click Forgot Password.')).toBeInTheDocument()
   })
 
+  it("shows whether an agent reply was emailed, and nothing on messages that aren't emailed", async () => {
+    const [first, second, reply] = ticket.messages
+    mockApi({
+      ...ticket,
+      messages: [
+        first,
+        { ...second, emailStatus: null, emailError: null },
+        { ...reply, emailStatus: 'FAILED', emailError: 'AgentMail did not answer in time' },
+      ],
+    })
+    renderPage()
+
+    const agentReply = await screen.findByRole('listitem', { name: 'Message from Alan Agent' })
+    expect(within(agentReply).getByRole('status')).toHaveTextContent('Email not sent: AgentMail did not answer in time')
+    expect(within(agentReply).getByRole('button', { name: 'Retry sending' })).toBeInTheDocument()
+    const followUp = screen.getByRole('listitem', { name: 'Message from Casey Customer' })
+    expect(within(followUp).queryByRole('status')).not.toBeInTheDocument()
+  })
+
   it('says there are no replies when the ticket has only its first message', async () => {
     mockApi({ ...ticket, messages: [ticket.messages[0]] })
     renderPage()

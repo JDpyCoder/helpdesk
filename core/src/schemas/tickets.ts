@@ -22,8 +22,9 @@ export const SenderType = senderTypeSchema.enum;
 export type SenderType = z.infer<typeof senderTypeSchema>;
 
 // Must match the EmailStatus enum in server/prisma/schema.prisma: delivery of an agent or AI reply
-// to the customer (null for customer emails)
-export const emailStatusSchema = z.enum(["PENDING", "SENT", "FAILED"]);
+// to the customer (null for customer emails and replies that aren't emailed). SENT means AgentMail accepted it;
+// DELIVERED (the recipient's server accepted it), BOUNCED and REJECTED come later from AgentMail's events.
+export const emailStatusSchema = z.enum(["PENDING", "SENT", "FAILED", "DELIVERED", "BOUNCED", "REJECTED"]);
 export const EmailStatus = emailStatusSchema.enum;
 export type EmailStatus = z.infer<typeof emailStatusSchema>;
 
@@ -113,3 +114,10 @@ export const ticketIdSchema = z.coerce
   .int("Ticket id must be a whole number")
   .positive("Ticket id must be positive")
   .max(2147483647, "Ticket id is too large");
+
+// :messageId in /api/tickets/:id/messages/:messageId/resend
+export const ticketMessageIdSchema = z.coerce
+  .number({ message: "Message id must be a number" })
+  .int("Message id must be a whole number")
+  .positive("Message id must be positive")
+  .max(2147483647, "Message id is too large");

@@ -48,8 +48,9 @@ export default defineConfig({
       url: `${apiUrl}/api/auth/ok`,
       // An empty Gemini key overrides the one Bun would load from server/.env, so inbound
       // emails are never sent to Gemini for classification during e2e
-      // and an empty Sentry DSN keeps test errors out of the dev Sentry project
-      env: { ...testEnv, NODE_ENV: 'test', GOOGLE_GENERATIVE_AI_API_KEY: '', SENTRY_DSN: '' },
+      // and an empty Sentry DSN keeps test errors out of the dev Sentry project.
+      // An empty AgentMail key means agent replies are never emailed to anyone.
+      env: { ...testEnv, NODE_ENV: 'test', GOOGLE_GENERATIVE_AI_API_KEY: '', SENTRY_DSN: '', AGENTMAIL_API_KEY: '' },
       // Never reuse: a server already on this port might be wired to the dev database
       reuseExistingServer: false,
       timeout: 60_000,

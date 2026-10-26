@@ -45,6 +45,9 @@ database. Nothing else needs provisioning.
 | `GOOGLE_GENERATIVE_AI_API_KEY` | your Gemini key | Optional: enables polish, summaries, classification and auto-resolution |
 | `GEMINI_MODEL` | e.g. `gemini-3.8-flash` | Optional |
 | `SUPPORT_EMAIL` | e.g. `support@yourdomain.com` | Optional: sender shown on AI replies |
+| `AGENTMAIL_API_KEY` | AgentMail API key | Optional: with `AGENTMAIL_INBOX_ID`, agent replies to tickets that came from AgentMail are emailed to the customer. See [agentmail-setup.md](agentmail-setup.md) |
+| `AGENTMAIL_INBOX_ID` | e.g. `support@agentmail.to` | The support inbox customers write to |
+| `AGENTMAIL_WEBHOOK_SECRET` | `whsec_…` | Signing secret of the AgentMail webhook for `https://<host>/api/webhooks/agentmail` (events `message.received`, `.sent`, `.delivered`, `.bounced`, `.rejected`). While unset, that endpoint answers 503 |
 | `SENTRY_DSN` | server project DSN | Optional |
 | `SENTRY_ENVIRONMENT` | `production` | Optional (defaults to `NODE_ENV`) |
 | `VITE_SENTRY_DSN` | client project DSN | Optional. **Used at build time** (declared as a Docker `ARG`), so redeploy after changing it |
@@ -91,7 +94,7 @@ You don't need to set these:
 1. Push the repository (with `render.yaml`) to GitHub/GitLab.
 2. In the Render Dashboard, open **Blueprints → New Blueprint Instance** and pick the repository.
 3. Render lists the variables marked `sync: false`. Fill in what you use (`GOOGLE_GENERATIVE_AI_API_KEY`,
-   `SENTRY_DSN`, `VITE_SENTRY_DSN`) or leave them blank, then **Apply**. `BETTER_AUTH_SECRET` and
+   the three `AGENTMAIL_*` variables, `SENTRY_DSN`, `VITE_SENTRY_DSN`) or leave them blank, then **Apply**. `BETTER_AUTH_SECRET` and
    `INBOUND_EMAIL_SECRET` are generated; read `INBOUND_EMAIL_SECRET` from the service's **Environment** page
    for whatever posts to `/api/inbound-email`.
 4. Once the service is live, create the first admin and the AI Agent user:

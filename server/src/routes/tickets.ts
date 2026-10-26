@@ -3,13 +3,15 @@ import {
   listTicketsQuerySchema,
   polishReplySchema,
   ticketIdSchema,
+  ticketMessageIdSchema,
   UNCLASSIFIED,
   updateTicketSchema,
 } from "core";
 import { type Response, Router } from "express";
 import { prisma } from "../db.ts";
 import type { Prisma } from "../generated/prisma/client.ts";
-import { Role, SenderType, TicketStatus } from "../generated/prisma/enums.ts";
+import { EmailStatus, Role, SenderType, TicketStatus } from "../generated/prisma/enums.ts";
+import { sendReplyEmail } from "../lib/agentmail.ts";
 import { humanUserWhere } from "../lib/ai-agent.ts";
 import { isPolishConfigured, polishReply } from "../lib/polish-reply.ts";
 import { isSummaryConfigured, summarizeTicket } from "../lib/summarize-ticket.ts";
@@ -111,10 +113,16 @@ const ticketDetailSelect = {
       fromName: true,
       body: true,
       receivedAt: true,
+      emailStatus: true,
+      emailError: true,
     },
     orderBy: [{ receivedAt: "asc" }, { id: "asc" }],
   },
 } as const satisfies Prisma.TicketSelect;
+
+function findTicketDetail(id: number) {
+  return prisma.ticket.findUnique({ where: { id }, select: ticketDetailSelect });
+}
 
 ticketsRouter.get("/:id", async (req, res) => {
   const parsed = ticketIdSchema.safeParse(req.params.id);
@@ -184,7 +192,9 @@ ticketsRouter.patch("/:id", async (req, res) => {
 });
 
 // An agent's reply to the customer: appended to the conversation as an AGENT message written by the
-// signed-in user. No email is sent yet. Returns the updated ticket in the detail shape.
+// signed-in user. On a ticket from AgentMail it is stored PENDING and emailed before answering, then shows
+// SENT or FAILED (with the reason); other tickets (dummy data, /api/inbound-email) are never emailed.
+// Answers 201 with the updated ticket in the detail shape either way, since the reply is saved.
 ticketsRouter.post("/:id/replies", async (req, res: Response<unknown, AuthLocals>) => {
   const parsedId = ticketIdSchema.safeParse(req.params.id);
   if (!parsedId.success) {
@@ -199,10 +209,12 @@ ticketsRouter.post("/:id/replies", async (req, res: Response<unknown, AuthLocals
   const id = parsedId.data;
   const { user } = res.locals;
 
-  if (!(await prisma.ticket.findUnique({ where: { id }, select: { id: true } }))) {
+  const current = await prisma.ticket.findUnique({ where: { id }, select: { agentmailThreadId: true } });
+  if (!current) {
     res.status(404).json({ error: "Ticket not found" });
     return;
   }
+  const emailed = Boolean(current.agentmailThreadId);
 
   const ticket = await prisma.ticket.update({
     where: { id },
@@ -216,12 +228,59 @@ ticketsRouter.post("/:id/replies", async (req, res: Response<unknown, AuthLocals
           fromEmail: user.email,
           fromName: user.name,
           body: parsed.data.body,
+          emailStatus: emailed ? EmailStatus.PENDING : null,
         },
       },
     },
     select: ticketDetailSelect,
   });
-  res.status(201).json({ ticket });
+  if (!emailed) {
+    res.status(201).json({ ticket });
+    return;
+  }
+  // The reply is the newest message by this user
+  const reply = ticket.messages.findLast(
+    (message) => message.author?.id === user.id && message.emailStatus === EmailStatus.PENDING,
+  );
+  if (reply) await sendReplyEmail(reply.id);
+  res.status(201).json({ ticket: (await findTicketDetail(id)) ?? ticket });
+});
+
+// Emails a reply whose email failed again, with the same idempotency key, so a send that did go out the first
+// time isn't sent twice. Returns the ticket in the detail shape, with the reply SENT or FAILED again.
+ticketsRouter.post("/:id/messages/:messageId/resend", async (req, res) => {
+  const parsedId = ticketIdSchema.safeParse(req.params.id);
+  if (!parsedId.success) {
+    sendValidationError(res, parsedId.error);
+    return;
+  }
+  const parsedMessageId = ticketMessageIdSchema.safeParse(req.params.messageId);
+  if (!parsedMessageId.success) {
+    sendValidationError(res, parsedMessageId.error);
+    return;
+  }
+  const id = parsedId.data;
+  const messageId = parsedMessageId.data;
+
+  const message = await prisma.ticketMessage.findFirst({
+    where: { id: messageId, ticketId: id },
+    select: { emailStatus: true },
+  });
+  if (!message) {
+    res.status(404).json({ error: "Message not found" });
+    return;
+  }
+  // Guarded, so two clicks can't both send
+  const { count } = await prisma.ticketMessage.updateMany({
+    where: { id: messageId, emailStatus: EmailStatus.FAILED },
+    data: { emailStatus: EmailStatus.PENDING, emailError: null },
+  });
+  if (count === 0) {
+    res.status(409).json({ error: "Only a reply whose email failed can be sent again" });
+    return;
+  }
+  await sendReplyEmail(messageId);
+  res.json({ ticket: await findTicketDetail(id) });
 });
 
 // Improves a reply draft with Gemini (greeting the customer, signed by the signed-in agent) and returns { body };

@@ -216,6 +216,7 @@ export async function autoResolveStoredTicket(ticketId: number) {
   }
 
   // Only a ticket still PROCESSING is resolved, and the reply is stored with it
+  // Never emailed: tickets from AgentMail skip auto-resolution (see ingest-email.ts)
   await prisma.$transaction(async (tx) => {
     const { count } = await tx.ticket.updateMany({
       where: { id: ticketId, status: TicketStatus.PROCESSING },

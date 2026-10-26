@@ -3,6 +3,7 @@ import axios from 'axios'
 import { ArrowLeft, Sparkles } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { Link, useParams } from 'react-router'
+import EmailStatusNote from '@/components/EmailStatusNote.tsx'
 import TicketAssigneeSelect from '@/components/TicketAssigneeSelect.tsx'
 import TicketCategorySelect from '@/components/TicketCategorySelect.tsx'
 import TicketReplyForm from '@/components/TicketReplyForm.tsx'
@@ -17,7 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton.tsx'
 import { errorMessage } from '@/lib/query-client.ts'
 import { senderTypeLabels, senderTypeVariants } from '@/lib/ticket-labels.ts'
 import { cn } from 'cn'
-import { SenderType, ticketIdSchema } from 'core'
+import { type EmailStatus, SenderType, ticketIdSchema } from 'core'
 
 export type TicketMessage = {
   id: number
@@ -28,6 +29,10 @@ export type TicketMessage = {
   fromName: string
   body: string
   receivedAt: string
+  // Whether the reply was emailed to the customer; null for customer emails and replies that aren't emailed
+  emailStatus: EmailStatus | null
+  // Why the email failed, bounced or was rejected
+  emailError: string | null
 }
 
 // GET /api/tickets/:id: the list columns plus the conversation, oldest message first
@@ -119,7 +124,7 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
               <h2 id="ticket-message-heading" className="font-medium">
                 Message
               </h2>
-              <MessageItem message={original} />
+              <MessageItem message={original} ticketId={ticket.id} />
               {/* Keyed so another ticket's summary never shows on this one */}
               <TicketSummary key={ticket.id} ticketId={ticket.id} />
             </section>
@@ -133,7 +138,7 @@ function TicketDetailContent({ ticket, error }: TicketDetailContentProps) {
             ) : (
               <ol className="space-y-4">
                 {replies.map((message) => (
-                  <MessageItem key={message.id} message={message} as="li" />
+                  <MessageItem key={message.id} message={message} ticketId={ticket.id} as="li" />
                 ))}
               </ol>
             )}
@@ -190,7 +195,15 @@ function initials(name: string) {
 }
 
 // One message in the conversation, tinted and marked by who wrote it (customer, agent or AI)
-function MessageItem({ message, as: Tag = 'article' }: { message: TicketMessage; as?: 'article' | 'li' }) {
+function MessageItem({
+  message,
+  ticketId,
+  as: Tag = 'article',
+}: {
+  message: TicketMessage
+  ticketId: number
+  as?: 'article' | 'li'
+}) {
   return (
     <Tag
       aria-label={`Message from ${message.fromName}`}
@@ -212,9 +225,19 @@ function MessageItem({ message, as: Tag = 'article' }: { message: TicketMessage;
             <span className="text-muted-foreground">&lt;{message.fromEmail}&gt;</span>
             <Badge variant={senderTypeVariants[message.senderType]}>{senderTypeLabels[message.senderType]}</Badge>
           </div>
-          <time dateTime={message.receivedAt} className="text-muted-foreground">
-            {new Date(message.receivedAt).toLocaleString()}
-          </time>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            {message.emailStatus && (
+              <EmailStatusNote
+                ticketId={ticketId}
+                messageId={message.id}
+                emailStatus={message.emailStatus}
+                emailError={message.emailError}
+              />
+            )}
+            <time dateTime={message.receivedAt} className="text-muted-foreground">
+              {new Date(message.receivedAt).toLocaleString()}
+            </time>
+          </div>
         </div>
         <p className="break-words whitespace-pre-wrap">{message.body}</p>
       </div>

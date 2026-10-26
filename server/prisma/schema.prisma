@@ -38,10 +38,15 @@ enum SenderType {
 }
 
 // Delivery of an agent or AI reply to the customer; null for customer emails
+// SENT: AgentMail accepted it. DELIVERED / BOUNCED / REJECTED come later from its webhook events.
+// DELIVERED means the recipient's mail server accepted it, not that it reached the inbox.
 enum EmailStatus {
   PENDING
   SENT
   FAILED
+  DELIVERED
+  BOUNCED
+  REJECTED
 }
 
 model User {
@@ -113,21 +118,23 @@ model Verification {
 }
 
 model Ticket {
-  id           Int             @id @default(autoincrement())
-  subject      String
+  id                Int             @id @default(autoincrement())
+  subject           String
   // Customer who opened the ticket; email is lowercased
-  fromEmail    String
-  fromName     String
-  status       TicketStatus    @default(OPEN)
+  fromEmail         String
+  fromName          String
+  status            TicketStatus    @default(OPEN)
   // Optional with no default: unset until AI classification (or an agent) fills it in
-  category     TicketCategory?
-  assignedToId String?
-  assignedTo   User?           @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
-  messages     TicketMessage[]
+  category          TicketCategory?
+  assignedToId      String?
+  assignedTo        User?           @relation(fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages          TicketMessage[]
   // When the ticket last went from unresolved to RESOLVED/CLOSED; cleared when it reopens
-  resolvedAt   DateTime?
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
+  resolvedAt        DateTime?
+  // The AgentMail thread the ticket came from; only these tickets have their replies emailed
+  agentmailThreadId String?         @unique
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@index([status])
   @@index([fromEmail])
@@ -136,24 +143,38 @@ model Ticket {
 }
 
 model TicketMessage {
-  id          Int          @id @default(autoincrement())
-  ticketId    Int
-  ticket      Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  id                 Int          @id @default(autoincrement())
+  ticketId           Int
+  ticket             Ticket       @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   // RFC 5322 Message-ID: makes webhook retries idempotent and links replies to their ticket
-  messageId   String?      @unique
-  senderType  SenderType   @default(CUSTOMER)
+  messageId          String?      @unique
+  senderType         SenderType   @default(CUSTOMER)
   // The agent or admin who wrote an AGENT message; null for customer emails
-  authorId    String?
-  author      User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
-  fromEmail   String
-  fromName    String
+  authorId           String?
+  author             User?        @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  fromEmail          String
+  fromName           String
   // Plain-text body
-  body        String
-  receivedAt  DateTime     @default(now())
+  body               String
+  receivedAt         DateTime     @default(now())
   // Whether the reply was emailed to the customer; null for customer emails
-  emailStatus EmailStatus?
+  emailStatus        EmailStatus?
+  // AgentMail's id for this message: the one a reply answers, and how delivery events find a reply
+  agentmailMessageId String?      @unique
+  // Why the email failed or bounced, shown to the agent (no addresses or message content)
+  emailError         String?
 
   @@index([ticketId])
   @@index([authorId])
   @@map("ticket_message")
+}
+
+// AgentMail webhook events already processed, by their event_id: deliveries are at least once,
+// so a retried event finds its row and is skipped
+model AgentmailEvent {
+  eventId     String   @id
+  eventType   String
+  processedAt DateTime @default(now())
+
+  @@map("agentmail_event")
 }

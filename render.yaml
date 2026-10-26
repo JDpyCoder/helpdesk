@@ -32,6 +32,12 @@ services:
         sync: false
       - key: SENTRY_DSN
         sync: false
+      - key: AGENTMAIL_API_KEY
+        sync: false
+      - key: AGENTMAIL_INBOX_ID
+        sync: false
+      - key: AGENTMAIL_WEBHOOK_SECRET
+        sync: false
       # Docker builds receive service variables as build args (declared as ARG in the Dockerfile)
       - key: VITE_SENTRY_DSN
         sync: false

@@ -48,9 +48,16 @@ export const senderTypeColors: Record<SenderType, string> = {
   [SenderType.AI]: 'bg-ai',
 }
 
-// Shown on agent and AI replies that are emailed to the customer
+// Shown on replies that are emailed to the customer. "Delivered" means the customer's mail server accepted it,
+// not that it reached their inbox.
 export const emailStatusLabels: Record<EmailStatus, string> = {
   [EmailStatus.PENDING]: 'Sending email…',
   [EmailStatus.SENT]: 'Emailed',
   [EmailStatus.FAILED]: 'Email not sent',
+  [EmailStatus.DELIVERED]: 'Delivered',
+  [EmailStatus.BOUNCED]: 'Email bounced',
+  [EmailStatus.REJECTED]: 'Email rejected',
 }
+
+// Statuses that mean the customer didn't get the email
+export const emailFailedStatuses: readonly EmailStatus[] = [EmailStatus.FAILED, EmailStatus.BOUNCED, EmailStatus.REJECTED]

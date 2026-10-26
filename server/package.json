@@ -22,6 +22,7 @@
     "@prisma/adapter-pg": "^7.10.0",
     "@prisma/client": "^7.10.0",
     "@sentry/bun": "^11.8.0",
+    "agentmail": "^0.5.46",
     "ai": "^7.0.141",
     "better-auth": "^1.7.7",
     "core": "workspace:*",
@@ -32,6 +33,7 @@
     "mailparser": "^3.9.40",
     "nodemailer": "^10.1.2",
     "pg-boss": "^12.38.0",
+    "svix": "^2.9.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {

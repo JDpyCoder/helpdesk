@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, mock, spyOn } fro
 import express, { type NextFunction, type Request, type Response } from "express";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { Role, SenderType, TicketStatus } from "../generated/prisma/enums.ts";
+import { EmailStatus, Role, SenderType, TicketStatus } from "../generated/prisma/enums.ts";
 import { AI_AGENT_EMAIL } from "../lib/ai-agent.ts";
 
 // Unit tests for GET /api/tickets (hiding PROCESSING tickets), PATCH /api/tickets/:id assignee validation, POST /api/tickets/:id/replies (and polish)
@@ -13,11 +13,14 @@ const findUser = mock();
 const updateTicket = mock();
 const findTickets = mock();
 const countTickets = mock();
+const findMessage = mock();
+const updateMessages = mock();
 const sessionUser = { id: "agent-1", name: "Alan Agent", email: "alan@example.com" };
 
 mock.module("../db.ts", () => ({
   prisma: {
     ticket: { findUnique: findTicket, update: updateTicket, findMany: findTickets, count: countTickets },
+    ticketMessage: { findFirst: findMessage, updateMany: updateMessages },
     $transaction: (queries: Promise<unknown>[]) => Promise.all(queries),
     user: { findFirst: findUser },
   },
@@ -37,6 +40,10 @@ mock.module("../lib/polish-reply.ts", () => ({ isPolishConfigured, polishReply }
 const isSummaryConfigured = mock(() => true);
 const summarizeTicket = mock();
 mock.module("../lib/summarize-ticket.ts", () => ({ isSummaryConfigured, summarizeTicket }));
+// AgentMail is never called: the route only decides which replies are emailed. A spy rather than a module mock,
+// so agentmail.test.ts still gets the real module whatever order the files run in.
+const agentmail = await import("../lib/agentmail.ts");
+const sendReplyEmail = spyOn(agentmail, "sendReplyEmail").mockImplementation(async () => {});
 
 // Imported after the mocks, so the router never loads the real Prisma client or auth config
 const { ticketsRouter } = await import("./tickets.ts");
@@ -57,6 +64,7 @@ beforeAll(() => {
 
 afterAll(() => {
   server.close();
+  sendReplyEmail.mockRestore();
 });
 
 afterEach(() => {
@@ -65,6 +73,9 @@ afterEach(() => {
   updateTicket.mockReset();
   findTickets.mockReset();
   countTickets.mockReset();
+  findMessage.mockReset();
+  updateMessages.mockReset();
+  sendReplyEmail.mockClear();
   polishReply.mockReset();
   isPolishConfigured.mockReset();
   isPolishConfigured.mockImplementation(() => true);
@@ -264,6 +275,31 @@ describe("POST /api/tickets/:id/replies", () => {
     expect(args.data.status).toBeUndefined();
   });
 
+  it("never emails a reply to a ticket that didn't come from AgentMail", async () => {
+    findTicket.mockResolvedValue({ agentmailThreadId: null });
+    updateTicket.mockResolvedValue(updatedTicket);
+
+    const res = await postReply(1, { body: "Thanks, we're on it." });
+
+    expect(res.status).toBe(201);
+    expect(updateTicket.mock.calls[0]?.[0].data.messages.create.emailStatus).toBeNull();
+    expect(sendReplyEmail).not.toHaveBeenCalled();
+  });
+
+  it("stores a reply to an AgentMail ticket as PENDING, emails it and returns the ticket after sending", async () => {
+    const reply = { id: 7, author: { id: "agent-1", name: "Alan Agent" }, emailStatus: EmailStatus.PENDING };
+    const sentTicket = { ...updatedTicket, messages: [{ ...reply, emailStatus: EmailStatus.SENT }] };
+    findTicket.mockResolvedValueOnce({ agentmailThreadId: "thread-1" }).mockResolvedValueOnce(sentTicket);
+    updateTicket.mockResolvedValue({ ...updatedTicket, messages: [reply] });
+
+    const res = await postReply(1, { body: "Thanks, we're on it." });
+
+    expect(res.status).toBe(201);
+    expect(updateTicket.mock.calls[0]?.[0].data.messages.create.emailStatus).toBe(EmailStatus.PENDING);
+    expect(sendReplyEmail).toHaveBeenCalledWith(7);
+    expect(await res.json()).toEqual({ ticket: sentTicket });
+  });
+
   it.each([
     ["a blank body", { body: "   " }],
     ["a body under 5 characters after trimming", { body: "  Okay  " }],
@@ -295,6 +331,56 @@ describe("POST /api/tickets/:id/replies", () => {
     expect(res.status).toBe(404);
     expect(await res.json()).toEqual({ error: "Ticket not found" });
     expect(updateTicket).not.toHaveBeenCalled();
+  });
+});
+
+function resend(id: string | number, messageId: string | number) {
+  return fetch(`${baseUrl}/${id}/messages/${messageId}/resend`, { method: "POST" });
+}
+
+describe("POST /api/tickets/:id/messages/:messageId/resend", () => {
+  it("sets a FAILED reply back to PENDING, sends it again and returns the ticket", async () => {
+    findMessage.mockResolvedValue({ emailStatus: EmailStatus.FAILED });
+    updateMessages.mockResolvedValue({ count: 1 });
+    findTicket.mockResolvedValue(updatedTicket);
+
+    const res = await resend(1, 7);
+
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ticket: updatedTicket });
+    expect(findMessage.mock.calls[0]?.[0].where).toEqual({ id: 7, ticketId: 1 });
+    expect(updateMessages).toHaveBeenCalledWith({
+      where: { id: 7, emailStatus: EmailStatus.FAILED },
+      data: { emailStatus: EmailStatus.PENDING, emailError: null },
+    });
+    expect(sendReplyEmail).toHaveBeenCalledWith(7);
+  });
+
+  it("refuses a reply whose email didn't fail (or a second click), without sending", async () => {
+    findMessage.mockResolvedValue({ emailStatus: EmailStatus.SENT });
+    updateMessages.mockResolvedValue({ count: 0 });
+
+    const res = await resend(1, 7);
+
+    expect(res.status).toBe(409);
+    expect(sendReplyEmail).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for a message that isn't on the ticket", async () => {
+    findMessage.mockResolvedValue(null);
+
+    const res = await resend(1, 7);
+
+    expect(res.status).toBe(404);
+    expect(updateMessages).not.toHaveBeenCalled();
+    expect(sendReplyEmail).not.toHaveBeenCalled();
+  });
+
+  it("rejects a malformed message id", async () => {
+    const res = await resend(1, "abc");
+
+    expect(res.status).toBe(400);
+    expect(findMessage).not.toHaveBeenCalled();
   });
 });
 

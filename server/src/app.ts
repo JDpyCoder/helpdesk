@@ -9,6 +9,7 @@ import { prisma } from "./db.ts";
 import { requireAuth, type AuthLocals } from "./middleware/requireAuth.ts";
 import { requireInboundSecret } from "./middleware/requireInboundSecret.ts";
 import { inboundEmailRouter } from "./routes/inbound-email.ts";
+import { agentmailWebhookRouter } from "./routes/agentmail-webhook.ts";
 import { agentsRouter } from "./routes/agents.ts";
 import { dashboardRouter } from "./routes/dashboard.ts";
 import { ticketsRouter } from "./routes/tickets.ts";
@@ -61,6 +62,10 @@ app.all("/api/auth/*splat", toNodeHandler(auth));
 // Emails can outgrow the default 100kb JSON limit, so this route parses its own body —
 // and only after the secret checks out, so unauthenticated callers can't make us parse 1mb
 app.use("/api/inbound-email", requireInboundSecret, express.json({ limit: "1mb" }), inboundEmailRouter);
+
+// AgentMail's Svix signature covers the exact bytes, so this route gets the raw body (any content type) and
+// verifies it before parsing. Bodies over 64 KiB aren't in the payload, so 2mb leaves room for the thread.
+app.use("/api/webhooks/agentmail", express.raw({ type: () => true, limit: "2mb" }), agentmailWebhookRouter);
 
 app.use(express.json());
 
